@@ -128,12 +128,26 @@ Xem báo cáo chi tiết sự cố tại: [`docs/su-co-bruteforce.md`](docs/su-c
   ```
   Sau đó truy cập: `http://localhost:9090/targets`
 
-### 5.2 Tài Khoản Mặc Định
-| Dịch vụ / Hệ thống | Tên đăng nhập | Mật khẩu | Ghi chú |
+### 5.2 Tài Khoản & Quản Lý Bí Mật
+*Theo quy tắc Hardening, toàn bộ mật khẩu thực tế được quản lý độc quyền và an toàn trong file `.env` (phân quyền `chmod 600`), không ghi trực tiếp mật khẩu thật vào tài liệu để phòng ngừa rò rỉ mã nguồn.*
+
+| Dịch vụ / Hệ thống | Tên đăng nhập | Biến môi trường mật khẩu trong `.env` | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| **Web - Admin** | `admin` | `Admin@123456` | Quản trị viên phòng khám |
-| **Web - Lễ tân** | `letan01` | `Letan@123456` | Tiếp đón bệnh nhân, đặt lịch |
-| **Web - Bác sĩ** | `bs.nguyen` | `Doctor@123456` | Lịch khám và hồ sơ bệnh án |
-| **pgAdmin 4** | `dtc245200587@ictu.edu.vn` | `PgAdmin!Clinic#2026Sec` | Quản trị CSDL PostgreSQL |
-| **Grafana** | `admin` | `GrafanaAdmin!Clinic#2026Sec` | Xem 4 Dashboards giám sát & Alerting |
-| **PostgreSQL Exporter** | `exporter` | `PgExporterClinic2026Sec` | Role chỉ đọc với `pg_monitor` |
+| **Web - Admin** | `admin` | `APP_ADMIN_PASSWORD` | Quản trị viên phòng khám (>=16 ký tự) |
+| **Web - Lễ tân** | `letan01` | `APP_LETAN_PASSWORD` | Tiếp đón bệnh nhân, đặt lịch |
+| **Web - Bác sĩ** | `bs.nguyen` | `APP_DOCTOR_PASSWORD` | Lịch khám và hồ sơ bệnh án |
+| **pgAdmin 4** | `dtc245200587@ictu.edu.vn` | `PGADMIN_DEFAULT_PASSWORD` | Quản trị CSDL PostgreSQL (>=16 ký tự) |
+| **Grafana** | `admin` | `GRAFANA_ADMIN_PASSWORD` | Xem 4 Dashboards & Alerting (>=16 ký tự) |
+| **PostgreSQL Exporter** | `exporter` | `PG_EXPORTER_PASSWORD` | Role chỉ đọc với `pg_monitor` |
+
+## 6. Các Biện Pháp Gia Cố Bảo Mật (Hardening)
+
+Hệ thống đã triển khai toàn diện các tầng bảo vệ:
+1. **Non-root Container**: Các container ứng dụng (`clinic_web`, `clinic_nginx`, `clinic_pgadmin`, `clinic_prometheus`, `clinic_grafana`, `clinic_loki`, `clinic_alert_sink`) chạy hoàn toàn bằng user không đặc quyền (non-root). Các container cần đặc quyền theo dõi hệ thống (`cadvisor`, `promtail`) được giới hạn quyền bằng `read_only`, `:ro` mounts và giải trình kiến trúc.
+2. **Network Isolation**: Tách biệt 3 mạng Docker (`clinic_frontend`, `clinic_backend`, `clinic_monitoring`). Database `clinic_db` chỉ kết nối mạng `backend` với `internal: true`, không publish cổng và không thể truy cập từ `frontend`. Chỉ có Nginx publish cổng 80/443.
+3. **Database Least Privilege & SCRAM-SHA-256**: Role ứng dụng `clinic_app` chỉ có quyền `SELECT, INSERT, UPDATE, DELETE` trên các bảng public; bị từ chối mọi thao tác `DROP TABLE` / `CREATE TABLE`. Sử dụng thuật toán băm mật khẩu `scram-sha-256`. Giới hạn `pg_hba.conf` chỉ chấp nhận kết nối từ subnet nội bộ `backend`.
+4. **Container Security & Resource Limits**: Cấu hình `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`, hệ thống tệp chỉ đọc `read_only: true` kèm `tmpfs` cho thư mục tạm `/tmp`, giới hạn CPU (`cpus`) và RAM (`mem_limit`).
+5. **Nginx Hardening & Rate Limiting**: `server_tokens off;`, ẩn `Server` và `X-Powered-By` header, áp dụng rate limiting `limit_req_zone` bảo vệ endpoint `/login` ngăn chặn tấn công Brute Force / DoS.
+6. **Tường lửa UFW**: Bật UFW chỉ cho phép các cổng bắt buộc: `22/tcp` (SSH), `80/tcp` (HTTP) và `443/tcp` (HTTPS). Mặc định chặn toàn bộ kết nối đến (`default deny incoming`).
+7. **Bảo vệ Cookie & Phiên làm việc**: Cookie session cấu hình `HttpOnly=True`, `Secure=True`, `SameSite='Lax'`, thời gian hết hạn phiên làm việc hợp lý.
+

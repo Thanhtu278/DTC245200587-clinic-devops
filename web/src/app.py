@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import timedelta
 from flask import Flask, redirect, url_for, session, render_template, request, abort
 from werkzeug.middleware.proxy_fix import ProxyFix
 from .db import get_db_connection
@@ -18,6 +19,14 @@ def create_app():
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=60)
+    app.config["SESSION_COOKIE_NAME"] = "clinic_session"
+
+    @app.after_request
+    def remove_server_headers(response):
+        response.headers.pop("Server", None)
+        response.headers.pop("X-Powered-By", None)
+        return response
 
     # Healthcheck endpoint
     @app.route("/health")

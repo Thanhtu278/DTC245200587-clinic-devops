@@ -35,7 +35,7 @@ with open(os.path.join(BASE_DIR, ".env"), "r") as f:
             k, v = line.split("=", 1)
             env_vars[k.strip()] = v.strip()
 
-GF_PASS = env_vars.get("GRAFANA_ADMIN_PASSWORD", "GrafanaAdmin!Clinic#2026Sec")
+GF_PASS = env_vars.get("GRAFANA_ADMIN_PASSWORD", "")
 
 def grafana_get(endpoint):
     url = f"https://localhost/grafana{endpoint}"

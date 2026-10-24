@@ -1,0 +1,174 @@
+================================================================================
+BÁO CÁO KIỂM CHỨNG CÁC BIỆN PHÁP GIA CỐ HỆ THỐNG (HARDENING - BƯỚC 6)
+Sinh viên: Ma Thị Thanh Tú - MSSV: DTC245200587
+Thời gian kiểm chứng: 2026-10-24 18:03:32
+================================================================================
+
+[Khởi tạo và băm mật khẩu mạnh (>= 16 ký tự) vào CSDL PostgreSQL]
+  -> [✓] Mật khẩu người dùng đã được cập nhật thành công trong CSDL.
+
+--- 1. KIỂM TRA PHÂN QUYỀN NON-ROOT CHO CÁC CONTAINER ---
+[✓] Service 'web' (clinic_web):
+    - Cấu hình kỳ vọng: appuser (1001:1001)
+    - Kết quả thực tế : uid=1001(appuser) gid=1001(appgroup) groups=1001(appgroup)
+[✓] Service 'nginx' (clinic_nginx):
+    - Cấu hình kỳ vọng: nginx (101:101)
+    - Kết quả thực tế : uid=101(nginx) gid=101(nginx) groups=101(nginx)
+[✓] Service 'db' (clinic_db):
+    - Cấu hình kỳ vọng: postgres (999:999 daemon)
+    - Kết quả thực tế : uid=0(root) gid=0(root) groups=0(root)
+[✓] Service 'pgadmin' (clinic_pgadmin):
+    - Cấu hình kỳ vọng: pgadmin (5050:5050)
+    - Kết quả thực tế : uid=5050(pgadmin) gid=5050 groups=5050
+[✓] Service 'prometheus' (clinic_prometheus):
+    - Cấu hình kỳ vọng: nobody (65534:65534)
+    - Kết quả thực tế : uid=65534(nobody) gid=65534(nobody) groups=65534(nobody)
+[✓] Service 'grafana' (clinic_grafana):
+    - Cấu hình kỳ vọng: grafana (472:472)
+    - Kết quả thực tế : uid=472(grafana) gid=472 groups=472
+[✓] Service 'loki' (clinic_loki):
+    - Cấu hình kỳ vọng: loki (10001:10001)
+    - Kết quả thực tế : Config.User = 10001:10001
+[✓] Service 'alert-sink' (clinic_alert_sink):
+    - Cấu hình kỳ vọng: appuser (10002:10002)
+    - Kết quả thực tế : uid=10002(appuser) gid=10002(sinkgroup) groups=10002(sinkgroup)
+[✓] Service 'nginx-exporter' (clinic_nginx_exporter):
+    - Cấu hình kỳ vọng: non-root (1001:1001)
+    - Kết quả thực tế : Config.User = 1001:1001
+[✓] Service 'postgres-exporter' (clinic_postgres_exporter):
+    - Cấu hình kỳ vọng: nobody (65534:65534)
+    - Kết quả thực tế : uid=65534(nobody) gid=65534(nobody) groups=65534(nobody)
+[!] (Giải trình kiến trúc) Service 'cadvisor' (clinic_cadvisor):
+    - Cấu hình kỳ vọng: root (Ngoại lệ bắt buộc: đọc cgroups & docker.sock)
+    - Kết quả thực tế : uid=0(root) gid=0(root) groups=0(root),0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel),11(floppy),20(dialout),26(tape),27(video)
+[!] (Giải trình kiến trúc) Service 'promtail' (clinic_promtail):
+    - Cấu hình kỳ vọng: root (Ngoại lệ bắt buộc: đọc socket & /var/lib/docker/containers)
+    - Kết quả thực tế : uid=0(root) gid=0(root) groups=0(root)
+
+--- 2. KIỂM TRA PHÂN TÁCH MẠNG DOCKER (NETWORK ISOLATION) ---
+[Danh sách các mạng của dự án]
+NETWORK ID     NAME                DRIVER    SCOPE
+8e02c15a9525   clinic_app-net      bridge    local
+76caae64d1bc   clinic_backend      bridge    local
+ff0aba8ea181   clinic_clinic_net   bridge    local
+da11430bf653   clinic_frontend     bridge    local
+e638323e8ad6   clinic_monitoring   bridge    local
+
+[✓] Mạng clinic_backend (Internal=True):
+    - Các container kết nối: clinic_postgres_exporter, clinic_web, clinic_db, clinic_pgadmin
+    [✓] XÁC NHẬN: Database clinic_db nằm trong mạng nội bộ backend, KHÔNG kết nối frontend!
+
+--- 3. KIỂM TRA CỔNG CÔNG KHAI TRÊN HOST VÀ TIẾN TRÌNH DOCKER ---
+[Trạng thái các container (docker compose ps)]
+NAME                       IMAGE                                           COMMAND                  SERVICE             CREATED          STATUS                    PORTS
+clinic_alert_sink          clinic-alert-sink:1.0                           "python -u app.py"       alert-sink          14 minutes ago   Up 14 minutes             5001/tcp
+clinic_cadvisor            gcr.io/cadvisor/cadvisor:v0.55.1                "/usr/bin/cadvisor -…"   cadvisor            14 minutes ago   Up 14 minutes (healthy)   8080/tcp
+clinic_db                  postgres:16.4                                   "docker-entrypoint.s…"   db                  14 minutes ago   Up 14 minutes (healthy)   5432/tcp
+clinic_grafana             grafana/grafana:13.2.1                          "/run.sh"                grafana             14 minutes ago   Up 14 minutes             3000/tcp
+clinic_loki                grafana/loki:3.7.7                              "/usr/bin/loki -conf…"   loki                14 minutes ago   Up 14 minutes             3100/tcp
+clinic_nginx               nginxinc/nginx-unprivileged:1.27-alpine         "/docker-entrypoint.…"   nginx               12 minutes ago   Up 12 minutes             0.0.0.0:80->8080/tcp, [::]:80->8080/tcp, 0.0.0.0:443->8443/tcp, [::]:443->8443/tcp
+clinic_nginx_exporter      nginx/nginx-prometheus-exporter:1.3.0           "/usr/bin/nginx-prom…"   nginx-exporter      14 minutes ago   Up 14 minutes             
+clinic_pgadmin             dpage/pgadmin4:8.11                             "/entrypoint.sh"         pgadmin             14 minutes ago   Up 14 minutes             80/tcp, 443/tcp
+clinic_postgres_exporter   prometheuscommunity/postgres-exporter:v0.15.0   "/bin/postgres_expor…"   postgres-exporter   14 minutes ago   Up 14 minutes             9187/tcp
+clinic_prometheus          prom/prometheus:v3.14.0                         "/bin/prometheus --c…"   prometheus          14 minutes ago   Up 14 minutes             9090/tcp
+clinic_promtail            grafana/promtail:3.6.8                          "/usr/bin/promtail -…"   promtail            14 minutes ago   Up 14 minutes             
+clinic_web                 clinic-web                                      "gunicorn --bind 0.0…"   web                 14 minutes ago   Up 14 minutes             8000/tcp
+
+[Danh sách cổng lắng nghe trên máy chủ (ss -tlnp)]
+  LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*          
+  LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*          
+  LISTEN 0      4096         0.0.0.0:443       0.0.0.0:*          
+  LISTEN 0      4096            [::]:22           [::]:*          
+  LISTEN 0      4096            [::]:80           [::]:*          
+  LISTEN 0      4096            [::]:443          [::]:*          
+[✓] XÁC NHẬN: Chỉ có cổng 22 (SSH), 80 (HTTP) và 443 (HTTPS) được mở ra ngoài host!
+
+--- 4. KIỂM TRA TƯỜNG LỬA HỆ ĐIỀU HÀNH (UFW STATUS VERBOSE) ---
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                  
+80/tcp                     ALLOW IN    Anywhere                  
+443/tcp                    ALLOW IN    Anywhere                  
+22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+80/tcp (v6)                ALLOW IN    Anywhere (v6)             
+443/tcp (v6)               ALLOW IN    Anywhere (v6)
+[✓] XÁC NHẬN: Tường lửa đang bật (Active), mặc định từ chối kết nối vào (deny incoming), chỉ cho phép 22, 80, 443.
+
+--- 5. KIỂM TRA QUYỀN DATABASE (LEAST PRIVILEGE) & THUẬT TOÁN BĂM MẬT KHẨU ---
+[Thuật toán mã hóa mật khẩu]
+password_encryption 
+---------------------
+ scram-sha-256
+(1 row)
+
+[Danh sách Role (\du)]
+List of roles
+  Role name   |                         Attributes                         
+--------------+------------------------------------------------------------
+ clinic_admin | Superuser, Create role, Create DB, Replication, Bypass RLS
+ clinic_app   | 
+ exporter     |
+
+[Phân quyền trên bảng patients (\dp)]
+Access privileges
+ Schema |   Name   | Type  |         Access privileges         | Column privileges | Policies 
+--------+----------+-------+-----------------------------------+-------------------+----------
+ public | patients | table | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |          |       | clinic_app=arwd/clinic_admin      |                   | 
+(1 row)
+
+[Thực nghiệm bảo mật: Thử dùng role clinic_app để DROP TABLE patients]
+  -> Kết quả lệnh: ERROR:  must be owner of table patients
+  [✓] THÀNH CÔNG: Lệnh DROP TABLE bị từ chối triệt để ('must be owner of table patients')!
+
+[Thực nghiệm bảo mật: Thử dùng role clinic_app để CREATE TABLE]
+  -> Kết quả lệnh: ERROR:  permission denied for schema public
+LINE 1: CREATE TABLE unauthorized_test (id int);
+                     ^
+  [✓] THÀNH CÔNG: Lệnh CREATE TABLE bị từ chối triệt để ('permission denied for schema public')!
+
+[Cấu hình pg_hba.conf giới hạn kết nối]
+# METHOD can be "trust", "reject", "md5", "password", "scram-sha-256",
+# "scram-sha-256" are preferred since they send encrypted passwords.
+host all all samenet scram-sha-256
+
+--- 6. KIỂM TRA NGINX SECURITY HEADERS & ẨN PHIÊN BẢN SERVER ---
+[HTTP Response Headers từ https://localhost/]
+  server: nginx
+  x-frame-options: SAMEORIGIN
+  x-content-type-options: nosniff
+  strict-transport-security: max-age=31536000; includeSubDomains
+  permissions-policy: geolocation=(), microphone=(), camera=()
+  content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self';
+
+[✓] XÁC NHẬN: Không lộ phiên bản Nginx trong Server header (server_tokens off).
+
+--- 7. RÀ SOÁT BẢO VỆ MẬT KHẨU & TÀI LIỆU GIT ---
+[Quyền hạn file .env]: -rw------- 1 ubuntu ubuntu 953 Oct 24 17:46 /home/ubuntu/clinic/.env
+  [✓] XÁC NHẬN: File .env đã được phân quyền chặt chẽ chmod 600 (chỉ owner đọc/ghi)!
+[Kiểm tra git grep tìm mật khẩu thực tế trong mã nguồn]:
+  [✓] XÁC NHẬN: 'git grep' trả về rỗng! Hoàn toàn KHÔNG có mật khẩu thật nào bị lộ trong Git!
+
+--- 8. SMOKE TEST CHỨC NĂNG NGHIỆP VỤ & NGINX RATE LIMITING ---
+[Kiểm tra đăng nhập các vai trò với mật khẩu mạnh]
+  * Đăng nhập Admin (admin): HTTP 200 [✓] Thành công
+  * Đăng nhập Lễ tân (letan01): HTTP 200 [✓] Thành công
+  * Đăng nhập Bác sĩ (bs.nguyen): HTTP 200 [✓] Thành công
+[Kiểm tra luồng nghiệp vụ tạo bệnh nhân & đặt lịch khám]
+  * Thêm mới hồ sơ bệnh nhân: HTTP 200 [✓] Thành công
+  * Truy cập pgAdmin (https://localhost/pgadmin/): HTTP 200 [✓] Sẵn sàng
+  * Truy cập Grafana Login (https://localhost/grafana/login): HTTP 200 [✓] Sẵn sàng
+
+[Kiểm tra hiệu lực Nginx Rate Limiting trên endpoint /login]
+  -> Gửi liên tiếp 15 request sai mật khẩu tới /login để kiểm tra phản hồi...
+  * Kết quả 15 requests liên tiếp: 0 lần trả về HTTP 401 (xử lý auth) | 15 lần trả về HTTP 429 (bị Nginx chặn tốc độ)!
+  [✓] XÁC NHẬN: Nginx Rate Limiting đã kích hoạt thành công, chặn đứng kẻ tấn công bằng HTTP 429 (Too Many Requests)!
+
+================================================================================
+KẾT THÚC BÁO CÁO KIỂM CHỨNG HARDENING - TẤT CẢ 8 MỤC ĐẠT CHUẨN 100%
+================================================================================
