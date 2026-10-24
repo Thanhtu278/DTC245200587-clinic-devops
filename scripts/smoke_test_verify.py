@@ -10,11 +10,12 @@ import sys
 import time
 import subprocess
 import json
-import urllib.request
-import urllib.parse
-import ssl
 import re
 from datetime import datetime
+import requests
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 OUTPUT = []
 
@@ -22,95 +23,13 @@ def log(msg=""):
     print(msg)
     OUTPUT.append(msg)
 
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
-
 BASE_URL = "https://192.168.30.128"
-
-def http_req(url, method="GET", data=None, headers=None, follow_redirect=True):
-    if headers is None:
-        headers = {}
-    if "User-Agent" not in headers:
-        headers["User-Agent"] = "SmokeTest-Verifier/1.0"
-    
-    encoded_data = None
-    if data:
-        if isinstance(data, dict):
-            encoded_data = urllib.parse.urlencode(data).encode("utf-8")
-            if "Content-Type" not in headers:
-                headers["Content-Type"] = "application/x-www-form-urlencoded"
-        elif isinstance(data, str):
-            encoded_data = data.encode("utf-8")
-        elif isinstance(data, bytes):
-            encoded_data = data
-            
-    req = urllib.request.Request(url, data=encoded_data, headers=headers, method=method)
-    
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, hdrs, newurl):
-            return None
-
-    handlers = [urllib.request.HTTPSHandler(context=ctx)]
-    if not follow_redirect:
-        handlers.append(NoRedirect())
-        
-    opener = urllib.request.build_opener(*handlers)
-    try:
-        with opener.open(req, timeout=15) as resp:
-            body = resp.read().decode("utf-8", errors="replace")
-            return resp.status, body, resp.headers
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        return e.code, body, e.headers
-    except Exception as e:
-        return 0, str(e), {}
-
-class ClientSession:
-    def __init__(self):
-        self.cookies = {}
-        
-    def _update_cookies(self, headers):
-        cookie_hdrs = headers.get_all("Set-Cookie") if hasattr(headers, "get_all") else headers.get("Set-Cookie")
-        if not cookie_hdrs:
-            return
-        if isinstance(cookie_hdrs, str):
-            cookie_hdrs = [cookie_hdrs]
-        for ch in cookie_hdrs:
-            parts = ch.split(";")
-            if parts:
-                kv = parts[0].strip().split("=", 1)
-                if len(kv) == 2:
-                    self.cookies[kv[0]] = kv[1]
-                    
-    def _cookie_header(self):
-        if not self.cookies:
-            return ""
-        return "; ".join([f"{k}={v}" for k, v in self.cookies.items()])
-        
-    def get(self, url, follow_redirect=True):
-        hdrs = {}
-        ck = self._cookie_header()
-        if ck:
-            hdrs["Cookie"] = ck
-        status, body, headers = http_req(url, method="GET", headers=hdrs, follow_redirect=follow_redirect)
-        self._update_cookies(headers)
-        return status, body, headers
-
-    def post(self, url, data=None, follow_redirect=True):
-        hdrs = {}
-        ck = self._cookie_header()
-        if ck:
-            hdrs["Cookie"] = ck
-        status, body, headers = http_req(url, method="POST", data=data, headers=hdrs, follow_redirect=follow_redirect)
-        self._update_cookies(headers)
-        return status, body, headers
 
 def extract_csrf(html):
     m = re.search(r'name=["\']csrf_token["\']\s+value=["\']([^"\']+)["\']', html)
     if not m:
         m = re.search(r'value=["\']([^"\']+)["\']\s+name=["\']csrf_token["\']', html)
-    return m.group(1) if m else None
+    return m.group(1) if m else ""
 
 def psql(sql):
     cmd = ["docker", "exec", "clinic_db", "psql", "-U", "clinic_admin", "-d", "clinic", "-t", "-A", "-c", sql]
@@ -138,45 +57,45 @@ def run_tests():
     log("--- 2. KIỂM TRA ĐĂNG NHẬP 3 VAI TRÒ (RBAC) ---")
     
     # 2.1 Admin
-    s_admin = ClientSession()
-    st, body, _ = s_admin.get(f"{BASE_URL}/login")
-    csrf = extract_csrf(body)
-    st_login, body_login, _ = s_admin.post(f"{BASE_URL}/login", {"csrf_token": csrf, "username": "admin", "password": "Admin@123456"})
-    st_rep, body_rep, _ = s_admin.get(f"{BASE_URL}/admin/reports")
-    log(f"  [+] Vai trò ADMIN (admin): Login -> HTTP {st_login}, Truy cập /admin/reports -> HTTP {st_rep}")
-    assert st_rep == 200, f"Admin report failed with status {st_rep}"
+    s_admin = requests.Session()
+    r_get = s_admin.get(f"{BASE_URL}/login", verify=False)
+    csrf = extract_csrf(r_get.text)
+    r_login = s_admin.post(f"{BASE_URL}/login", data={"csrf_token": csrf, "username": "admin", "password": "Admin@123456"}, verify=False)
+    r_rep = s_admin.get(f"{BASE_URL}/admin/reports", verify=False)
+    log(f"  [+] Vai trò ADMIN (admin): Login -> HTTP {r_login.status_code}, Truy cập /admin/reports -> HTTP {r_rep.status_code}")
+    assert r_rep.status_code == 200, f"Admin report failed with status {r_rep.status_code}"
     log("      => Đạt: Admin đăng nhập thành công và truy cập được bảng điều khiển quản trị.")
 
     # 2.2 Receptionist
-    s_letan = ClientSession()
-    st, body, _ = s_letan.get(f"{BASE_URL}/login")
-    csrf = extract_csrf(body)
-    st_login, body_login, _ = s_letan.post(f"{BASE_URL}/login", {"csrf_token": csrf, "username": "letan01", "password": "Letan@123456"})
-    st_p, body_p, _ = s_letan.get(f"{BASE_URL}/patients/new")
-    log(f"  [+] Vai trò LỄ TÂN (letan01): Login -> HTTP {st_login}, Truy cập /patients/new -> HTTP {st_p}")
-    assert st_p == 200, f"Receptionist patient form failed with status {st_p}"
-    st_forbid, _, _ = s_letan.get(f"{BASE_URL}/admin/reports")
-    log(f"      Kiểm tra vượt quyền lễ tân vào /admin/reports: HTTP {st_forbid} (Kỳ vọng: 403 Forbidden)")
-    assert st_forbid == 403, f"RBAC failed, receptionist got {st_forbid}"
+    s_letan = requests.Session()
+    r_get = s_letan.get(f"{BASE_URL}/login", verify=False)
+    csrf = extract_csrf(r_get.text)
+    r_login = s_letan.post(f"{BASE_URL}/login", data={"csrf_token": csrf, "username": "letan01", "password": "Letan@123456"}, verify=False)
+    r_p = s_letan.get(f"{BASE_URL}/patients/new", verify=False)
+    log(f"  [+] Vai trò LỄ TÂN (letan01): Login -> HTTP {r_login.status_code}, Truy cập /patients/new -> HTTP {r_p.status_code}")
+    assert r_p.status_code == 200, f"Receptionist patient form failed with status {r_p.status_code}"
+    r_forbid = s_letan.get(f"{BASE_URL}/admin/reports", verify=False)
+    log(f"      Kiểm tra vượt quyền lễ tân vào /admin/reports: HTTP {r_forbid.status_code} (Kỳ vọng: 403 Forbidden)")
+    assert r_forbid.status_code == 403, f"RBAC failed, receptionist got {r_forbid.status_code}"
     log("      => Đạt: Lễ tân truy cập đúng phân hệ, bị chặn 403 khi cố truy cập trang Admin.")
 
     # 2.3 Doctor
-    s_doc = ClientSession()
-    st, body, _ = s_doc.get(f"{BASE_URL}/login")
-    csrf = extract_csrf(body)
-    st_login, body_login, _ = s_doc.post(f"{BASE_URL}/login", {"csrf_token": csrf, "username": "bs.nguyen", "password": "Doctor@123456"})
-    st_d, body_d, _ = s_doc.get(f"{BASE_URL}/doctor/appointments")
-    log(f"  [+] Vai trò BÁC SĨ (bs.nguyen): Login -> HTTP {st_login}, Truy cập /doctor/appointments -> HTTP {st_d}")
-    assert st_d == 200, f"Doctor appointment list failed with status {st_d}"
+    s_doc = requests.Session()
+    r_get = s_doc.get(f"{BASE_URL}/login", verify=False)
+    csrf = extract_csrf(r_get.text)
+    r_login = s_doc.post(f"{BASE_URL}/login", data={"csrf_token": csrf, "username": "bs.nguyen", "password": "Doctor@123456"}, verify=False)
+    r_d = s_doc.get(f"{BASE_URL}/doctor/appointments", verify=False)
+    log(f"  [+] Vai trò BÁC SĨ (bs.nguyen): Login -> HTTP {r_login.status_code}, Truy cập /doctor/appointments -> HTTP {r_d.status_code}")
+    assert r_d.status_code == 200, f"Doctor appointment list failed with status {r_d.status_code}"
     log("      => Đạt: Bác sĩ đăng nhập thành công và xem được danh sách lịch khám phụ trách.")
     log("")
 
     # 3. ĐẶT LỊCH VÀ CHỐNG TRÙNG GIỜ
     log("--- 3. KIỂM TRA ĐẶT LỊCH VÀ CHỐNG TRÙNG GIỜ KHÁM ---")
-    st, body, _ = s_letan.get(f"{BASE_URL}/patients/new")
-    csrf = extract_csrf(body)
+    r_p_form = s_letan.get(f"{BASE_URL}/patients/new", verify=False)
+    csrf = extract_csrf(r_p_form.text)
     p_code = f"BN_VERIFY_{int(time.time())}"
-    st_create, body_create, _ = s_letan.post(f"{BASE_URL}/patients/new", {
+    r_create = s_letan.post(f"{BASE_URL}/patients/new", data={
         "csrf_token": csrf,
         "patient_code": p_code,
         "full_name": "Trần Văn Kiểm Thử",
@@ -184,38 +103,38 @@ def run_tests():
         "gender": "M",
         "phone": "0912345678",
         "address": "TP. Thái Nguyên"
-    })
-    log(f"  [+] Tạo bệnh nhân mới {p_code}: HTTP {st_create}")
+    }, verify=False)
+    log(f"  [+] Tạo bệnh nhân mới {p_code}: HTTP {r_create.status_code}")
     p_id = psql(f"SELECT id FROM patients WHERE patient_code='{p_code}'")
     log(f"      ID bệnh nhân trong CSDL: {p_id}")
 
     test_slot = "2026-12-01T09:30"
-    st, body, _ = s_letan.get(f"{BASE_URL}/appointments/new")
-    csrf = extract_csrf(body)
-    st_book1, body_book1, _ = s_letan.post(f"{BASE_URL}/appointments/new", {
+    r_app_form = s_letan.get(f"{BASE_URL}/appointments/new", verify=False)
+    csrf = extract_csrf(r_app_form.text)
+    r_book1 = s_letan.post(f"{BASE_URL}/appointments/new", data={
         "csrf_token": csrf,
         "patient_id": str(p_id),
         "doctor_id": "1",
         "scheduled_at": test_slot,
         "reason": "Khám sức khỏe tổng quát định kỳ"
-    })
-    log(f"  [+] Đặt lịch khám lần 1 (BS 1 lúc {test_slot}): HTTP {st_book1}")
+    }, verify=False)
+    log(f"  [+] Đặt lịch khám lần 1 (BS 1 lúc {test_slot}): HTTP {r_book1.status_code}")
     app_id = psql(f"SELECT id FROM appointments WHERE doctor_id=1 AND scheduled_at='{test_slot}'")
     log(f"      ID lịch hẹn vừa tạo: {app_id}")
     assert app_id, "Appointment creation failed"
 
     # Thử đặt trùng giờ
-    st, body, _ = s_letan.get(f"{BASE_URL}/appointments/new")
-    csrf = extract_csrf(body)
-    st_book2, body_book2, _ = s_letan.post(f"{BASE_URL}/appointments/new", {
+    r_app_form2 = s_letan.get(f"{BASE_URL}/appointments/new", verify=False)
+    csrf = extract_csrf(r_app_form2.text)
+    r_book2 = s_letan.post(f"{BASE_URL}/appointments/new", data={
         "csrf_token": csrf,
         "patient_id": "1",
         "doctor_id": "1",
         "scheduled_at": test_slot,
         "reason": "Thử đặt lịch trùng giờ với bệnh nhân khác"
-    })
-    log(f"  [+] Thử đặt lịch TRÙNG GIỜ (BS 1 lúc {test_slot}): HTTP {st_book2}")
-    if "Bác sĩ đã có lịch khám vào khung giờ này" in body_book2:
+    }, verify=False)
+    log(f"  [+] Thử đặt lịch TRÙNG GIỜ (BS 1 lúc {test_slot}): HTTP {r_book2.status_code}")
+    if "Bác sĩ đã có lịch khám vào khung giờ này" in r_book2.text:
         log("      => Đạt [Chống trùng giờ]: Hệ thống từ chối chính xác: 'Bác sĩ đã có lịch khám vào khung giờ này!'")
     else:
         log("      => Đạt [Chống trùng giờ]: Yêu cầu bị từ chối thành công.")
@@ -223,15 +142,15 @@ def run_tests():
 
     # 4. BÁC SĨ GHI BỆNH ÁN
     log("--- 4. KIỂM TRA BÁC SĨ GHI BỆNH ÁN VÀ BẢO MẬT HỒ SƠ ---")
-    st, body, _ = s_doc.get(f"{BASE_URL}/doctor/appointments/{app_id}/record")
-    csrf = extract_csrf(body)
-    st_rec, body_rec, _ = s_doc.post(f"{BASE_URL}/doctor/appointments/{app_id}/record", {
+    r_rec_form = s_doc.get(f"{BASE_URL}/doctor/appointments/{app_id}/record", verify=False)
+    csrf = extract_csrf(r_rec_form.text)
+    r_rec = s_doc.post(f"{BASE_URL}/doctor/appointments/{app_id}/record", data={
         "csrf_token": csrf,
         "diagnosis": "Viêm đường hô hấp trên thể nhẹ",
         "prescription": "Paracetamol 500mg: 2 viên/ngày\nVitamin C 500mg: 1 viên/ngày",
         "notes": "Nghỉ ngơi, uống nhiều nước, tái khám sau 3 ngày nếu còn sốt."
-    })
-    log(f"  [+] Bác sĩ An nhập bệnh án cho lịch ID {app_id}: HTTP {st_rec}")
+    }, verify=False)
+    log(f"  [+] Bác sĩ An nhập bệnh án cho lịch ID {app_id}: HTTP {r_rec.status_code}")
     app_status = psql(f"SELECT status FROM appointments WHERE id={app_id}")
     log(f"      Trạng thái lịch khám trong CSDL: '{app_status}' (Kỳ vọng: 'done')")
     assert app_status == "done", f"Appointment status should be 'done', got '{app_status}'"
@@ -240,54 +159,48 @@ def run_tests():
     assert int(rec_count) >= 1, "Medical record was not saved"
 
     # Thử bác sĩ 1 sửa lịch của bác sĩ 2 (ID 2 là của bs.tran)
-    st_tamper, _, _ = s_doc.get(f"{BASE_URL}/doctor/appointments/2/record")
-    log(f"  [+] Bác sĩ An truy cập bệnh án của Bác sĩ khác (Lịch ID 2): HTTP {st_tamper} (Kỳ vọng: 403 Forbidden)")
-    assert st_tamper == 403, f"Cross-doctor isolation failed with status {st_tamper}"
+    r_tamper = s_doc.get(f"{BASE_URL}/doctor/appointments/2/record", verify=False)
+    log(f"  [+] Bác sĩ An truy cập bệnh án của Bác sĩ khác (Lịch ID 2): HTTP {r_tamper.status_code} (Kỳ vọng: 403 Forbidden)")
+    assert r_tamper.status_code == 403, f"Cross-doctor isolation failed with status {r_tamper.status_code}"
     log("      => Đạt: Bác sĩ ghi bệnh án thành công, cập nhật trạng thái 'done', chặn chéo bác sĩ 403.")
     log("")
 
     # 5. PGADMIN
     log("--- 5. KIỂM TRA DỊCH VỤ PGADMIN (SUBPATH /pgadmin/) ---")
-    st_pga, body_pga, _ = http_req(f"{BASE_URL}/pgadmin/", follow_redirect=True)
-    log(f"  [+] Truy cập pgAdmin qua Nginx reverse proxy ({BASE_URL}/pgadmin/): HTTP {st_pga}")
-    assert st_pga == 200, f"pgAdmin returned status {st_pga}"
-    if "<title>pgAdmin" in body_pga or "pgAdmin" in body_pga:
+    r_pga = requests.get(f"{BASE_URL}/pgadmin/", verify=False)
+    log(f"  [+] Truy cập pgAdmin qua Nginx reverse proxy ({BASE_URL}/pgadmin/): HTTP {r_pga.status_code}")
+    assert r_pga.status_code == 200, f"pgAdmin returned status {r_pga.status_code}"
+    if "<title>pgAdmin" in r_pga.text or "pgAdmin" in r_pga.text:
         log("      => Đạt: Giao diện pgAdmin 4 phản hồi đúng tiêu đề, hoạt động bình thường qua proxy.")
     log("")
 
     # 6. GRAFANA + 3 DASHBOARDS + DATASOURCES
     log("--- 6. KIỂM TRA GRAFANA, DATASOURCES VÀ DASHBOARDS ---")
-    gf_auth = "Basic YWRtaW46R3JhZmFuYUFkbWluQDIwMjYh" # admin:GrafanaAdmin@2026! or dynamically check
-    # Thử auth với header
-    hdrs_gf = {"Authorization": gf_auth}
-    st_ds, body_ds, _ = http_req(f"{BASE_URL}/grafana/api/datasources", headers=hdrs_gf)
-    if st_ds != 200:
-        # Lấy mật khẩu grafana từ .env
-        env_vars = {}
-        if os.path.exists(".env"):
-            with open(".env") as f:
-                for line in f:
-                    if "=" in line and not line.strip().startswith("#"):
-                        k, v = line.strip().split("=", 1)
-                        env_vars[k.strip()] = v.strip().strip('"').strip("'")
-        import base64
-        u = env_vars.get("GF_SECURITY_ADMIN_USER", "admin")
-        p = env_vars.get("GF_SECURITY_ADMIN_PASSWORD", "GrafanaAdmin@2026!")
-        cred = base64.b64encode(f"{u}:{p}".encode("utf-8")).decode("utf-8")
-        hdrs_gf = {"Authorization": f"Basic {cred}"}
-        st_ds, body_ds, _ = http_req(f"{BASE_URL}/grafana/api/datasources", headers=hdrs_gf)
+    # Lấy mật khẩu grafana từ .env
+    env_vars = {}
+    if os.path.exists(".env"):
+        with open(".env") as f:
+            for line in f:
+                if "=" in line and not line.strip().startswith("#"):
+                    k, v = line.strip().split("=", 1)
+                    env_vars[k.strip()] = v.strip().strip('"').strip("'")
+    
+    gf_u = env_vars.get("GF_SECURITY_ADMIN_USER", "admin")
+    gf_p = env_vars.get("GF_SECURITY_ADMIN_PASSWORD", "GrafanaAdmin@2026!")
+    gf_auth = (gf_u, gf_p)
 
-    log(f"  [+] Kiểm tra API Datasources Grafana: HTTP {st_ds}")
-    assert st_ds == 200, f"Grafana datasources API failed: {st_ds}"
-    ds_json = json.loads(body_ds)
+    r_ds = requests.get(f"{BASE_URL}/grafana/api/datasources", auth=gf_auth, verify=False)
+    log(f"  [+] Kiểm tra API Datasources Grafana: HTTP {r_ds.status_code}")
+    assert r_ds.status_code == 200, f"Grafana datasources API failed: {r_ds.status_code}"
+    ds_json = r_ds.json()
     ds_names = [d.get("name") for d in ds_json]
     log(f"      Danh sách Datasources đã nạp ({len(ds_names)} nguồn): {', '.join(ds_names)}")
     assert "Prometheus" in ds_names, "Prometheus datasource missing"
     assert "Loki" in ds_names, "Loki datasource missing"
 
-    st_dash, body_dash, _ = http_req(f"{BASE_URL}/grafana/api/search?type=dash-db", headers=hdrs_gf)
-    log(f"  [+] Kiểm tra API Dashboards Grafana: HTTP {st_dash}")
-    dash_json = json.loads(body_dash)
+    r_dash = requests.get(f"{BASE_URL}/grafana/api/search?type=dash-db", auth=gf_auth, verify=False)
+    log(f"  [+] Kiểm tra API Dashboards Grafana: HTTP {r_dash.status_code}")
+    dash_json = r_dash.json()
     dash_titles = [d.get("title") for d in dash_json]
     log(f"      Danh sách Dashboards đã nạp ({len(dash_titles)} dashboard): {', '.join(dash_titles)}")
     for req_title in ["Containers Monitoring", "Nginx Reverse Proxy Monitoring", "PostgreSQL Database Monitoring"]:
@@ -299,9 +212,10 @@ def run_tests():
 
     # 7. LOKI QUERY
     log("--- 7. KIỂM TRA TRUY VẤN LOGQL QUA LOKI ---")
-    st_loki, body_loki, _ = http_req(f"{BASE_URL}/grafana/api/datasources/proxy/uid/loki/loki/api/v1/query?query={urllib.parse.quote('{job=\"webapp\"}')}", headers=hdrs_gf)
+    r_loki = requests.get(f"{BASE_URL}/grafana/api/datasources/proxy/uid/loki/loki/api/v1/query", params={"query": '{job="webapp"}'}, auth=gf_auth, verify=False)
+    st_loki = r_loki.status_code
+    body_loki = r_loki.text
     if st_loki != 200:
-        # Gọi trực tiếp qua container nội bộ nếu cần
         cmd_loki = ["docker", "exec", "clinic_loki", "wget", "-qO-", "http://localhost:3100/loki/api/v1/query?query=%7Bjob%3D%22webapp%22%7D"]
         res_l = subprocess.run(cmd_loki, capture_output=True, text=True)
         if res_l.returncode == 0 and "result" in res_l.stdout:
@@ -317,17 +231,17 @@ def run_tests():
 
     # 8. ALERT BRUTE FORCE VÀ WEBHOOK ALERT-SINK
     log("--- 8. KIỂM TRA KỊCH BẢN BRUTE FORCE VÀ CẢNH BÁO ALERT-SINK ---")
-    s_atk = ClientSession()
-    st, body, _ = s_atk.get(f"{BASE_URL}/login")
-    csrf_atk = extract_csrf(body)
+    s_atk = requests.Session()
+    r_get = s_atk.get(f"{BASE_URL}/login", verify=False)
+    csrf_atk = extract_csrf(r_get.text)
     log("  [+] Kích hoạt 15 lần đăng nhập thất bại liên tiếp...")
     rate_limited = 0
     failed_attempts = 0
     for i in range(15):
-        st_f, b_f, _ = s_atk.post(f"{BASE_URL}/login", {"csrf_token": csrf_atk, "username": "admin", "password": f"AttackPass_{i}"})
-        if st_f == 429:
+        r_f = s_atk.post(f"{BASE_URL}/login", data={"csrf_token": csrf_atk, "username": "admin", "password": f"AttackPass_{i}"}, verify=False)
+        if r_f.status_code == 429:
             rate_limited += 1
-        elif "Sai tên đăng nhập hoặc mật khẩu" in b_f or st_f in (200, 401):
+        elif "Sai tên đăng nhập hoặc mật khẩu" in r_f.text or r_f.status_code in (200, 401):
             failed_attempts += 1
     log(f"      Kết quả gửi request: {failed_attempts} lần trả về lỗi đăng nhập, {rate_limited} lần Nginx chặn 429 (Rate Limit).")
 
