@@ -223,15 +223,23 @@ def run_tests():
 
     # 7. LOKI QUERY
     log("--- 7. KIỂM TRA TRUY VẤN LOGQL QUA LOKI ---")
-    r_loki = requests.get(f"{BASE_URL}/grafana/api/datasources/proxy/uid/loki/loki/api/v1/query", params={"query": '{job="webapp"}'}, auth=gf_auth, verify=False)
-    st_loki = r_loki.status_code
-    body_loki = r_loki.text
+    st_loki = 0
+    body_loki = "{}"
+    try:
+        r_loki = requests.get(f"{BASE_URL}/grafana/api/datasources/proxy/uid/loki/loki/api/v1/query_range", params={"query": '{job="webapp"}'}, auth=gf_auth, verify=False, timeout=10)
+        if r_loki.status_code == 200:
+            st_loki = 200
+            body_loki = r_loki.text
+    except Exception:
+        pass
+        
     if st_loki != 200:
-        cmd_loki = ["docker", "exec", "clinic_loki", "wget", "-qO-", "http://localhost:3100/loki/api/v1/query?query=%7Bjob%3D%22webapp%22%7D"]
+        cmd_loki = ["docker", "exec", "clinic_alert_sink", "python3", "-c", "import urllib.request; url = 'http://loki:3100/loki/api/v1/query_range?query=%7Bjob%3D%22webapp%22%7D'; print(urllib.request.urlopen(url).read().decode('utf-8'))"]
         res_l = subprocess.run(cmd_loki, capture_output=True, text=True)
         if res_l.returncode == 0 and "result" in res_l.stdout:
             st_loki = 200
             body_loki = res_l.stdout
+            
     log(f"  [+] Thực thi truy vấn LogQL ({{job=\"webapp\"}}): HTTP {st_loki}")
     assert st_loki == 200, "Loki query failed"
     loki_res = json.loads(body_loki)
