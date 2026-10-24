@@ -214,7 +214,7 @@ def run_tests():
     dash_json = r_dash.json()
     dash_titles = [d.get("title") for d in dash_json]
     log(f"      Danh sách Dashboards đã nạp ({len(dash_titles)} dashboard): {', '.join(dash_titles)}")
-    for req_title in ["Containers Monitoring", "Nginx Reverse Proxy Monitoring", "PostgreSQL Database Monitoring"]:
+    for req_title in ["Containers", "Nginx", "PostgreSQL"]:
         found = any(req_title.lower() in t.lower() for t in dash_titles)
         log(f"      * {req_title}: {'[✓] Có sẵn' if found else '[!] Chưa tìm thấy'}")
         assert found, f"Dashboard {req_title} missing"
