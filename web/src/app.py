@@ -1,6 +1,7 @@
 import os
 import secrets
 from flask import Flask, redirect, url_for, session, render_template, request, abort
+from werkzeug.middleware.proxy_fix import ProxyFix
 from .db import get_db_connection
 from .auth import auth_bp
 from .routes_patients import patients_bp
@@ -10,8 +11,12 @@ from .routes_admin import admin_bp
 
 def create_app():
     app = Flask(__name__)
+    # Cấu hình ProxyFix tin cậy headers từ Nginx (X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-clinic-2026")
     app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SECURE"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     # Healthcheck endpoint
