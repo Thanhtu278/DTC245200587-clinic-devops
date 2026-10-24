@@ -80,9 +80,6 @@ services:
     image: dpage/pgadmin4:8.11
     container_name: clinic_pgadmin
     restart: unless-stopped
-    user: "5050:5050"
-    security_opt:
-      - no-new-privileges:true
     mem_limit: 512m
     cpus: 0.5
     environment:
