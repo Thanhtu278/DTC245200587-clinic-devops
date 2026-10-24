@@ -53,11 +53,25 @@ clinic/
 │           ├── nginx.json
 │           └── postgres.json
 ├── loki/
+│   └── loki-config.yaml
 ├── promtail/
+│   └── promtail-config.yaml
 ├── alert-sink/
+│   ├── Dockerfile
+│   └── app.py
 ├── scripts/
+│   ├── gen-cert.sh
+│   ├── simulate_bruteforce.sh
+│   ├── verify_buoc3.sh
+│   ├── verify_buoc4.sh
+│   └── verify_buoc5.sh
 ├── evidence/
+│   ├── buoc3-nginx.txt
+│   ├── buoc4-giamsat.txt
+│   ├── buoc5-logql.txt
+│   └── buoc5-sucodo.txt
 └── docs/
+    └── su-co-bruteforce.md
 ```
 
 ## 4. Hướng Dẫn Khởi Chạy Nhanh
@@ -93,6 +107,13 @@ docker compose ps
 docker compose exec nginx nginx -t
 ```
 
+### Bước 6: Chạy kịch bản mô phỏng sự cố An toàn thông tin (Tấn công Brute Force)
+Để kích hoạt cảnh báo Grafana Alerting và kiểm tra truy vết log:
+```bash
+./scripts/simulate_bruteforce.sh
+```
+Xem báo cáo chi tiết sự cố tại: [`docs/su-co-bruteforce.md`](docs/su-co-bruteforce.md).
+
 ## 5. Truy Cập Hệ Thống & Giám Sát
 
 ### 5.1 Các Đường Dẫn Chính
@@ -114,5 +135,5 @@ docker compose exec nginx nginx -t
 | **Web - Lễ tân** | `letan01` | `Letan@123456` | Tiếp đón bệnh nhân, đặt lịch |
 | **Web - Bác sĩ** | `bs.nguyen` | `Doctor@123456` | Lịch khám và hồ sơ bệnh án |
 | **pgAdmin 4** | `dtc245200587@ictu.edu.vn` | `PgAdmin!Clinic#2026Sec` | Quản trị CSDL PostgreSQL |
-| **Grafana** | `admin` | `GrafanaAdmin!Clinic#2026Sec` | Xem 3 Dashboards giám sát |
+| **Grafana** | `admin` | `GrafanaAdmin!Clinic#2026Sec` | Xem 4 Dashboards giám sát & Alerting |
 | **PostgreSQL Exporter** | `exporter` | `PgExporterClinic2026Sec` | Role chỉ đọc với `pg_monitor` |

@@ -1,0 +1,40 @@
+==============================================================================
+BÁO CÁO KẾT QUẢ THỰC THI TRUY VẤN LOGQL (LOKI + PROMTAIL)
+Sinh viên: Ma Thị Thanh Tú - MSSV: DTC245200587
+Thời gian: 2026-10-24 17:28:26
+Hạ tầng: Loki 3.7.7, Promtail 3.6.8, Docker SD
+==============================================================================
+
+--- Q1: LỖI HTTP CỦA NGINX ({job="nginx"} |~ " (4[0-9]{2}|5[0-9]{2}) ") ---
+Câu lệnh: {job="nginx"} |~ " (4[0-9]{2}|5[0-9]{2}) "
+  -> Log: 172.27.0.1 - - [24/Oct/2026:10:28:09 +0000] "POST /login HTTP/1.1" 401 2589 "-" "Python-urllib/3.14"
+  -> Log: 172.27.0.1 - - [24/Oct/2026:10:28:09 +0000] "POST /login HTTP/1.1" 401 2589 "-" "Python-urllib/3.14"
+  -> Log: 172.27.0.1 - - [24/Oct/2026:10:28:08 +0000] "POST /login HTTP/1.1" 401 2589 "-" "Python-urllib/3.14"
+
+--- Q2: LỖI HOẶC NGOẠI LỆ ỨNG DỤNG ({job="webapp"} |~ "(?i)(error|exception|failed)") ---
+Câu lệnh: {job="webapp"} |~ "(?i)(error|exception|failed)"
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+
+--- Q3: SỰ KIỆN ĐĂNG NHẬP THẤT BẠI ({job="webapp"} |= "LOGIN_FAILED") ---
+Câu lệnh: {job="webapp"} |= "LOGIN_FAILED"
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+  -> Log: LOGIN_FAILED ip=172.27.0.1 user=admin reason=wrong_password
+
+--- Q4: SỐ LẦN ĐĂNG NHẬP THẤT BẠI THEO PHÚT (sum(count_over_time({job="webapp"} |= "LOGIN_FAILED" [1m]))) ---
+Câu lệnh: sum(count_over_time({job="webapp"} |= "LOGIN_FAILED" [1m]))
+  -> Giá trị tính toán (lần/phút): 20
+
+--- Q5: LOG LỖI / HOẠT ĐỘNG POSTGRESQL ({job="postgres"} |~ "(?i)(error|fatal|ready|started)") ---
+Câu lệnh: {job="postgres"} |~ "(?i)(error|fatal|ready|started)"
+  -> Log: 2026-10-24 09:56:38.737 UTC [1] LOG:  database system is ready to accept connections
+
+==============================================================================
+HOÀN THÀNH TOÀN BỘ 5 CÂU TRUY VẤN LOGQL CHUẨN ĐỀ BÀI
+==============================================================================

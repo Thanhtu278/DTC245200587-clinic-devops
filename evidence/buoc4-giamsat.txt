@@ -1,0 +1,114 @@
+==============================================================================
+BÁO CÁO KIỂM THỬ BƯỚC 4: PROMETHEUS + GRAFANA GIÁM SÁT TOÀN DIỆN
+Sinh viên: Ma Thị Thanh Tú - MSSV: DTC245200587
+Thời gian kiểm thử: Sat Oct 24 04:56:36 PM +07 2026
+Host: 192.168.30.128
+==============================================================================
+
+--- 1. KHỞI TẠO ROLE EXPORTER CHO POSTGRESQL NẾU CHƯA CÓ ---
+NOTICE:  role "exporter" has already been granted membership in role "pg_monitor" by role "clinic_admin"
+DO
+=> Đã đảm bảo role 'exporter' tồn tại với quyền 'pg_monitor'.
+
+--- 2. KHỞI CHẠY STACK GIÁM SÁT PROMETHEUS & GRAFANA ---
+ Container clinic_web Running 
+ Container clinic_db Recreate 
+ Container clinic_nginx Recreate 
+ Container clinic_db Recreated 
+ Container clinic_postgres_exporter Recreate 
+ Container clinic_nginx Recreated 
+ Container clinic_postgres_exporter Recreated 
+ Container clinic_db Starting 
+ Container clinic_db Started 
+ Container clinic_db Waiting 
+ Container clinic_db Waiting 
+ Container clinic_db Healthy 
+ Container clinic_nginx Starting 
+ Container clinic_db Healthy 
+ Container clinic_postgres_exporter Starting 
+ Container clinic_postgres_exporter Started 
+ Container clinic_nginx Started 
+[*] Đang chờ 15s để các dịch vụ hoàn tất scrape chu kỳ đầu tiên...
+
+--- 3. TRẠNG THÁI CÁC CONTAINER TRONG HỆ THỐNG (docker compose ps) ---
+NAME                       IMAGE                                           COMMAND                  SERVICE             CREATED          STATUS                    PORTS
+clinic_cadvisor            gcr.io/cadvisor/cadvisor:v0.55.1                "/usr/bin/cadvisor -…"   cadvisor            5 minutes ago    Up 5 minutes (healthy)    8080/tcp
+clinic_db                  postgres:16.4                                   "docker-entrypoint.s…"   db                  22 seconds ago   Up 21 seconds (healthy)   5432/tcp
+clinic_grafana             grafana/grafana:13.2.1                          "/run.sh"                grafana             5 minutes ago    Up 5 minutes              3000/tcp
+clinic_nginx               nginx:1.27-alpine                               "/docker-entrypoint.…"   nginx               22 seconds ago   Up 15 seconds             0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+clinic_nginx_exporter      nginx/nginx-prometheus-exporter:1.3.0           "/usr/bin/nginx-prom…"   nginx-exporter      5 minutes ago    Up 5 minutes              
+clinic_pgadmin             dpage/pgadmin4:8.11                             "/entrypoint.sh"         pgadmin             19 minutes ago   Up 19 minutes             80/tcp, 443/tcp
+clinic_postgres_exporter   prometheuscommunity/postgres-exporter:v0.15.0   "/bin/postgres_expor…"   postgres-exporter   22 seconds ago   Up 15 seconds             9187/tcp
+clinic_prometheus          prom/prometheus:v3.14.0                         "/bin/prometheus --c…"   prometheus          5 minutes ago    Up 5 minutes              9090/tcp
+clinic_web                 clinic-web                                      "gunicorn --bind 0.0…"   web                 19 minutes ago   Up 19 minutes             8000/tcp
+
+--- 4. NẠP LẠI VÀ KIỂM TRA NGINX REVERSE PROXY TỚI GRAFANA ---
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+2026/10/24 09:56:59 [notice] 38#38: signal process started
+
+--- 5. SINH TẢI TRUY CẬP (TRAFFIC GENERATION - 200 REQUESTS) ---
+[*] Bắt đầu sinh 200 request vào Web App qua HTTPS để tạo số liệu giám sát...
+=> Đã hoàn thành 200 requests thành công.
+[*] Chờ 5s để exporter cập nhật số liệu mới nhất...
+
+--- 6. KIỂM TRA TRẠNG THÁI TARGETS TỪ API PROMETHEUS ---
+Tổng số targets: 4
+  - Job: cadvisor   | Target: http://cadvisor:8080/metrics   | Status: UP
+  - Job: nginx      | Target: http://nginx-exporter:9113/metrics | Status: UP
+  - Job: postgres   | Target: http://postgres-exporter:9187/metrics | Status: UP
+  - Job: prometheus | Target: http://localhost:9090/metrics  | Status: UP
+
+--- 7. TRUY VẤN PROMQL QUA API PROMETHEUS ---
+[*] PromQL: container_memory_usage_bytes
+  -> Trả về 12 metrics:
+     * clinic_cadvisor          : 280.48 MB
+     * clinic_nginx_exporter    : 18.53 MB
+     * clinic_postgres_exporter : 15.10 MB
+     * clinic_db                : 35.34 MB
+     * clinic_prometheus        : 145.45 MB
+
+[*] PromQL: nginx_connections_active
+  -> Active connections: 2
+
+[*] PromQL: pg_up (Trạng thái kết nối PostgreSQL)
+  -> PostgreSQL Exporter status: UP (1)
+
+[*] PromQL: pg_stat_database_xact_commit
+  -> Database clinic commits: 2464
+
+--- 8. KIỂM TRA TRUY CẬP GRAFANA QUA HTTPS NGINX (https://localhost/grafana/) ---
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0
+HTTP/2 200 
+server: nginx
+date: Sat, 24 Oct 2026 09:57:13 GMT
+content-type: text/html; charset=UTF-8
+vary: Accept-Encoding
+cache-control: no-store
+x-content-type-options: nosniff
+x-frame-options: deny
+x-xss-protection: 1; mode=block
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+permissions-policy: geolocation=(), microphone=(), camera=()
+content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'self';
+
+
+--- 9. KIỂM TRA PROVISIONING DATASOURCES & DASHBOARDS QUA GRAFANA API ---
+[*] Danh sách Datasources trong Grafana:
+  - Datasource: Prometheus | Type: prometheus | Default: True | URL: http://prometheus:9090
+
+[*] Danh sách Dashboards được nạp tự động (Provisioned Dashboards):
+  - Dashboard: Clinic Monitoring | UID: dg26m6g16fhfka | Folder: None | URL: /grafana/dashboards/f/dg26m6g16fhfka/clinic-monitoring
+  - Dashboard: Clinic - Containers | UID: clinic-containers | Folder: Clinic Monitoring | URL: /grafana/d/clinic-containers/clinic-containers
+  - Dashboard: Clinic - Nginx | UID: clinic-nginx | Folder: Clinic Monitoring | URL: /grafana/d/clinic-nginx/clinic-nginx
+  - Dashboard: Clinic - PostgreSQL | UID: clinic-postgres | Folder: Clinic Monitoring | URL: /grafana/d/clinic-postgres/clinic-postgresql
+
+==============================================================================
+KẾT THÚC KIỂM THỬ BƯỚC 4 - TOÀN BỘ CÁC DỊCH VỤ VÀ CHỈ SỐ HOẠT ĐỘNG HOÀN HẢO
+==============================================================================

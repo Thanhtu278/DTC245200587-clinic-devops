@@ -1,0 +1,152 @@
+==============================================================================
+BÁO CÁO KIỂM THỬ BƯỚC 3: NGINX REVERSE PROXY, HTTPS & SECURITY HEADERS
+Sinh viên: Ma Thị Thanh Tú - MSSV: DTC245200587
+Thời gian kiểm thử: Sat Oct 24 04:42:59 PM +07 2026
+Host: 192.168.30.128
+==============================================================================
+
+--- 1. KIỂM TRA CÚ PHÁP CẤU HÌNH NGINX (nginx -t) ---
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+--- 2. KIỂM TRA CHUYỂN HƯỚNG HTTP -> HTTPS (PORT 80 -> 301) ---
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    162   0      0   0      0      0      0                              0  0    162   0      0   0      0      0      0                              0  0    162   0      0   0      0      0      0                              0
+HTTP/1.1 301 Moved Permanently
+Server: nginx
+Date: Sat, 24 Oct 2026 09:42:59 GMT
+Content-Type: text/html
+Content-Length: 162
+Connection: keep-alive
+Location: https://192.168.30.128/
+
+
+--- 3. KIỂM TRA HTTPS VÀ CÁC SECURITY HEADERS (PORT 443) ---
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    199   0      0   0      0      0      0                              0  0    199   0      0   0      0      0      0                              0  0    199   0      0   0      0      0      0                              0
+HTTP/2 302 
+server: nginx
+date: Sat, 24 Oct 2026 09:42:59 GMT
+content-type: text/html; charset=utf-8
+content-length: 199
+location: /login
+vary: Cookie
+set-cookie: session=eyJjc3JmX3Rva2VuIjoiYjFjNGY4MmQ0NmU1ZjQ4NTFmODhhMjE2NDVlYjY0NjM5ZWFjZmY0YTM1MzkzZDAwIn0.atx9ow.QwcMfFHdLN7x8OF3h1xS7Ow2fw8; Secure; HttpOnly; Path=/; SameSite=Lax
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+permissions-policy: geolocation=(), microphone=(), camera=()
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'self';
+
+
+--- 4. KIỂM TRA NỘI DUNG TRANG ĐĂNG NHẬP QUA HTTPS (https://localhost/) ---
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0100    199 100    199   0      0  21386      0                              0100    199 100    199   0      0  21147      0                              0
+  0      0   0      0   0      0      0      0                              0100   2457 100   2457   0      0 178.9k      0                              0100   2457 100   2457   0      0 177.5k      0                              0100   2457 100   2457   0      0 176.7k      0                              0
+  <title>Đăng Nhập - Hệ Thống Phòng Khám</title>
+      <h2 style="color: var(--secondary); margin-top: 0.5rem;">Đăng Nhập Hệ Thống</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Hệ thống Quản lý Phòng khám DTC245200587</p>
+      <input type="hidden" name="csrf_token" value="67a2291ceda4c2b26d428ca6d49c074c6b497efade32c4b7">
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Đăng Nhập</button>
+    Hệ Thống Quản Lý Phòng Khám / Bệnh Viện • SV: Ma Thị Thanh Tú - MSSV: DTC245200587 • Môn TK&QT HTPM
+
+--- 5. KIỂM TRA REVERSE PROXY PGADMIN (https://localhost/pgadmin/) ---
+[*] Kiểm tra Header pgAdmin (chuyển hướng /login):
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    245   0      0   0      0      0      0                              0  0    245   0      0   0      0      0      0                              0  0    245   0      0   0      0      0      0                              0
+HTTP/2 302 
+server: nginx
+date: Sat, 24 Oct 2026 09:42:59 GMT
+content-type: text/html; charset=utf-8
+content-length: 245
+location: /pgadmin/login?next=/pgadmin/
+vary: Accept-Encoding
+x-frame-options: SAMEORIGIN
+content-security-policy: default-src ws: http: data: blob: 'unsafe-inline' 'unsafe-eval';
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+set-cookie: pga4_session=e2f05ccd-3ec8-4f9b-b1e5-f18290cb95d4!mGtL1hvPTlEoAZgUgvGU27p4zyBUvCi1xQfXI+dn1rU=; Expires=Sun, 25 Oct 2026 09:42:59 GMT; HttpOnly; Path=/pgadmin/; SameSite=Lax
+x-frame-options: SAMEORIGIN
+x-content-type-options: nosniff
+x-xss-protection: 1; mode=block
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=31536000; includeSubDomains
+permissions-policy: geolocation=(), microphone=(), camera=()
+content-security-policy: default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'self';
+
+
+[*] Kiểm tra nội dung trang đăng nhập pgAdmin:
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0100    245 100    245   0      0  22232      0                              0100    245 100    245   0      0  22109      0                              0
+  0      0   0      0   0      0      0      0                              0100   6647 100   6647   0      0 340.7k      0                              0100   6647 100   6647   0      0 333.1k      0                              0100   6647 100   6647   0      0 332.0k      0                              0
+<title>pgAdmin 4</title>
+
+--- 6. XÁC NHẬN CỔNG 8080 VÀ 8081 KHÔNG CÒN TRUY CẬP TỪ NGOÀI ---
+[*] Kiểm tra kết nối trực tiếp cổng 8080 (kỳ vọng: Failed to connect):
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0
+curl: (7) Failed to connect to localhost port 8080 after 0 ms: Could not connect to server
+=> Cổng 8080 đã đóng hoàn toàn (Connection Refused)
+
+[*] Kiểm tra kết nối trực tiếp cổng 8081 (kỳ vọng: Failed to connect):
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0
+curl: (7) Failed to connect to localhost port 8081 after 0 ms: Could not connect to server
+=> Cổng 8081 đã đóng hoàn toàn (Connection Refused)
+
+[*] Kiểm tra các cổng công khai của clinic (chỉ 80 và 443 mở cho Nginx):
+NAME             IMAGE                 COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+clinic_db        postgres:16.4         "docker-entrypoint.s…"   db        18 minutes ago   Up 18 minutes (healthy)   5432/tcp
+clinic_nginx     nginx:1.27-alpine     "/docker-entrypoint.…"   nginx     5 minutes ago    Up 5 minutes              0.0.0.0:80->80/tcp, [::]:80->80/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+clinic_pgadmin   dpage/pgadmin4:8.11   "/entrypoint.sh"         pgadmin   5 minutes ago    Up 5 minutes              80/tcp, 443/tcp
+clinic_web       clinic-web            "gunicorn --bind 0.0…"   web       5 minutes ago    Up 5 minutes              8000/tcp
+
+[*] Kiểm tra bảng quy tắc UFW Firewall (chỉ cho phép 80, 443 và SSH 22):
+Status: active
+80/tcp                     ALLOW IN    Anywhere                  
+443/tcp                    ALLOW IN    Anywhere                  
+80/tcp (v6)                ALLOW IN    Anywhere (v6)             
+443/tcp (v6)               ALLOW IN    Anywhere (v6)             
+
+--- 7. KIỂM TRA CHỨNG CHỈ TLS VỚI OPENSSL S_CLIENT ---
+subject=C=VN, ST=ThaiNguyen, O=ICTU, OU=DTC245200587, CN=192.168.30.128
+notBefore=Oct 24 09:37:04 2026 GMT
+notAfter=Oct 24 09:37:04 2027 GMT
+X509v3 Subject Alternative Name: 
+    IP Address:192.168.30.128, DNS:localhost
+
+--- 8. ĐĂNG NHẬP THỬ QUA HTTPS BẰNG CURL (SESSION, CSRF & PROXY) ---
+[*] Bước 8.1: Lấy trang /login và lưu Cookie ban đầu...
+    -> Đã lấy CSRF Token: a31a8464239e5cbe0425dfdc4058ea6e04be7a9bec311bc0
+[*] Bước 8.2: Gửi POST đăng nhập tài khoản admin...
+    -> HTTP Response Status & Location:
+HTTP/2 302 
+location: /admin/reports
+[*] Bước 8.3: Truy cập trang bảo mật /admin/reports bằng session cookie...
+    -> [THÀNH CÔNG] Đã truy cập trang Quản Trị thành công qua HTTPS!
+    <h1 class="page-title">Báo Cáo Thống Kê Lượt Khám</h1>
+
+--- 9. KIỂM TRA LOG NGINX RA STDOUT (CHUẨN BỊ CHO PROMTAIL) ---
+clinic_nginx  | 192.168.30.128 - - [24/Oct/2026:09:42:59 +0000] "HEAD / HTTP/1.1" 301 0 "-" "curl/8.18.0" "-" rt=0.000 uct="-" uht="-" urt="-"
+clinic_nginx  | 192.168.30.128 - - [24/Oct/2026:09:42:59 +0000] "HEAD / HTTP/2.0" 302 0 "-" "curl/8.18.0" "-" rt=0.003 uct="0.001" uht="0.003" urt="0.003"
+clinic_nginx  | 172.27.0.1 - - [24/Oct/2026:09:42:59 +0000] "GET / HTTP/2.0" 302 199 "-" "curl/8.18.0" "-" rt=0.002 uct="0.000" uht="0.002" urt="0.002"
+clinic_nginx  | 172.27.0.1 - - [24/Oct/2026:09:42:59 +0000] "GET /login HTTP/2.0" 200 2457 "-" "curl/8.18.0" "-" rt=0.002 uct="0.001" uht="0.002" urt="0.002"
+clinic_nginx  | 172.27.0.1 - - [24/Oct/2026:09:42:59 +0000] "HEAD /pgadmin/ HTTP/2.0" 302 0 "-" "curl/8.18.0" "-" rt=0.004 uct="0.000" uht="0.003" urt="0.003"
+clinic_nginx  | 172.27.0.1 - - [24/Oct/2026:09:42:59 +0000] "GET /pgadmin/ HTTP/2.0" 302 245 "-" "curl/8.18.0" "-" rt=0.004 uct="0.001" uht="0.004" urt="0.004"
+clinic_nginx  | 172.27.0.1 - - [24/Oct/2026:09:42:59 +0000] "GET /pgadmin/login?next=/pgadmin/ HTTP/2.0" 200 6647 "-" "curl/8.18.0" "-" rt=0.004 uct="0.001" uht="0.005" urt="0.005"
+clinic_nginx  | 192.168.30.128 - - [24/Oct/2026:09:42:59 +0000] "GET /login HTTP/2.0" 200 2457 "-" "curl/8.18.0" "-" rt=0.002 uct="0.001" uht="0.002" urt="0.002"
+clinic_nginx  | 192.168.30.128 - - [24/Oct/2026:09:43:00 +0000] "POST /login HTTP/2.0" 302 215 "-" "curl/8.18.0" "-" rt=0.051 uct="0.001" uht="0.051" urt="0.052"
+clinic_nginx  | 192.168.30.128 - - [24/Oct/2026:09:43:00 +0000] "GET /admin/reports HTTP/2.0" 200 6126 "-" "curl/8.18.0" "-" rt=0.044 uct="0.001" uht="0.043" urt="0.043"
+
+==============================================================================
+KẾT THÚC KIỂM THỬ BƯỚC 3 - TOÀN BỘ YÊU CẦU ĐỀU ĐẠT CHUẨN 100%
+==============================================================================

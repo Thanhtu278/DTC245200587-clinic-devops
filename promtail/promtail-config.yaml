@@ -1,0 +1,85 @@
+# ==============================================================================
+# Promtail Configuration (Docker Service Discovery & Relabeling)
+# Sinh viên: Ma Thị Thanh Tú - DTC245200587
+# ==============================================================================
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 102400
+
+scrape_configs:
+  - job_name: docker_containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: name
+            values: ['clinic_.*']
+
+    relabel_configs:
+      # Lấy tên container, bỏ ký tự '/' ở đầu nếu có
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/?(.*)'
+        target_label: 'container'
+
+      # Lấy tên Compose service
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'compose_service'
+
+      # Gán nhãn job tương ứng cho các dịch vụ cốt lõi:
+      # job="nginx" cho nginx
+      - source_labels: ['compose_service']
+        regex: 'nginx'
+        target_label: 'job'
+        replacement: 'nginx'
+
+      # job="webapp" cho web Flask
+      - source_labels: ['compose_service']
+        regex: 'web'
+        target_label: 'job'
+        replacement: 'webapp'
+
+      # job="postgres" cho database postgres
+      - source_labels: ['compose_service']
+        regex: 'db'
+        target_label: 'job'
+        replacement: 'postgres'
+
+      # Đường dẫn file log của container trên host
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: '/var/lib/docker/containers/$1/$1-json.log'
+
+    pipeline_stages:
+      # Trích xuất nội dung từ log JSON của Docker daemon
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            timestamp: time
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+      - output:
+          source: output
+
+      # Pipeline xử lý riêng cho access log của Nginx
+      - match:
+          selector: '{job="nginx"}'
+          stages:
+            - regex:
+                # Log format: $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent ...
+                expression: '^(?P<remote_addr>\S+) - (?P<remote_user>\S+) \[(?P<time_local>[^\]]+)\] "(?P<request>[^"]*)" (?P<status>\d{3}) (?P<body_bytes_sent>\d+)'
+            # Lưu ý đề bài: "không tạo nhãn có cardinality cao (không gắn IP làm label)"
+            # Chỉ tạo label status (cardinality thấp: 200, 301, 302, 404, 500)
+            - labels:
+                status:

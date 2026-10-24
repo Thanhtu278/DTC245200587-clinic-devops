@@ -1,0 +1,82 @@
+==============================================================================
+BÁO CÁO DIỄN TIẾN SỰ CỐ AN TOÀN THÔNG TIN (INCIDENT TIMELINE)
+Đề tài: Tấn công dò mật khẩu (Brute Force) vào hệ thống quản lý phòng khám
+Sinh viên thực hiện: Ma Thị Thanh Tú - MSSV: DTC245200587
+Mốc thời gian bắt đầu: 2026-10-24 17:27:57
+==============================================================================
+
+[GIAI ĐOẠN A] TRƯỚC TẤN CÔNG:
+  -> Alert Rule: Clinic - Brute force login | State: inactive | Health: ok
+  -> Kết luận: Trước khi tấn công, không có cảnh báo nào kích hoạt (Hệ thống an toàn).
+
+[GIAI ĐOẠN B] BẮT ĐẦU MÔ PHỎNG TẤN CÔNG (20 YÊU CẦU ĐĂNG NHẬP SAI LIÊN TIẾP):
+  [01/20] 17:27:58 | User: admin | Pass: '123456         ' | Phản hồi HTTP: 401
+  [02/20] 17:27:59 | User: admin | Pass: 'password       ' | Phản hồi HTTP: 401
+  [03/20] 17:28:00 | User: admin | Pass: 'admin123       ' | Phản hồi HTTP: 401
+  [04/20] 17:28:00 | User: admin | Pass: 'admin@123      ' | Phản hồi HTTP: 401
+  [05/20] 17:28:01 | User: admin | Pass: '12345678       ' | Phản hồi HTTP: 401
+  [06/20] 17:28:01 | User: admin | Pass: 'root           ' | Phản hồi HTTP: 401
+  [07/20] 17:28:02 | User: admin | Pass: 'qwerty         ' | Phản hồi HTTP: 401
+  [08/20] 17:28:02 | User: admin | Pass: 'pass1234       ' | Phản hồi HTTP: 401
+  [09/20] 17:28:03 | User: admin | Pass: 'welcome        ' | Phản hồi HTTP: 401
+  [10/20] 17:28:03 | User: admin | Pass: 'hospital123    ' | Phản hồi HTTP: 401
+  [11/20] 17:28:04 | User: admin | Pass: 'clinic2026     ' | Phản hồi HTTP: 401
+  [12/20] 17:28:05 | User: admin | Pass: 'clinic@123     ' | Phản hồi HTTP: 401
+  [13/20] 17:28:05 | User: admin | Pass: 'Admin@2026     ' | Phản hồi HTTP: 401
+  [14/20] 17:28:06 | User: admin | Pass: 'Secret#123     ' | Phản hồi HTTP: 401
+  [15/20] 17:28:06 | User: admin | Pass: 'pass@123       ' | Phản hồi HTTP: 401
+  [16/20] 17:28:07 | User: admin | Pass: 'master123      ' | Phản hồi HTTP: 401
+  [17/20] 17:28:07 | User: admin | Pass: 'superuser      ' | Phản hồi HTTP: 401
+  [18/20] 17:28:08 | User: admin | Pass: 'access2026     ' | Phản hồi HTTP: 401
+  [19/20] 17:28:09 | User: admin | Pass: 'doctor@123     ' | Phản hồi HTTP: 401
+  [20/20] 17:28:09 | User: admin | Pass: 'invalid_pass_20' | Phản hồi HTTP: 401
+=> Hoàn thành 20 lần thử sai từ 17:27:57 đến 17:28:10.
+
+[GIAI ĐOẠN C] ĐÁNH GIÁ CẢNH BÁO GRAFANA & TIẾP NHẬN WEBHOOK TẠI ALERT-SINK:
+  -> Đang chờ 15s để Promtail đẩy log vào Loki và Grafana đánh giá quy tắc...
+  -> Alert Rule: Clinic - Brute force login
+     * Trạng thái : FIRING
+     * Sức khỏe   : ok
+     * Cảnh báo kích hoạt: 1
+  -> Nội dung nhận được tại container alert-sink (/var/log/alerts.log):
+     ======================================================================
+     🚨 [ALERT-SINK] NHẬN CẢNH BÁO TỪ GRAFANA ALERTING LÚC: 2026-10-24 10:28:20
+        - Trạng thái : FIRING
+        - Tên cảnh báo: Clinic - Brute force login
+        - Tóm tắt    : Phát hiện tấn công dò mật khẩu (Brute Force) vào hệ thống phòng khám
+        - Số lượng   : 1 alerts trong payload
+     ======================================================================
+     {
+       "receiver": "alert-sink-webhook",
+       "status": "firing",
+       "alerts": [
+         {
+           "status": "firing",
+           "labels": {
+             "alertname": "Clinic - Brute force login",
+             "category": "security",
+             "grafana_folder": "Clinic Monitoring",
+             "service": "webapp",
+             "severity": "critical"
+           },
+           "annotations": {
+             "description": "Ghi nhận hơn 5 lần đăng nhập thất bại trong 1 phút qua webapp. Nguy cơ tài khoản bị tấn công dò mật khẩu. Hướng dẫn truy vết: Chạy LogQL {job=\"webapp\"} |= \"LOGIN_FAILED\" để xác định IP và username bị nhắm tới.",
+             "summary": "Phát hiện tấn công dò mật khẩu (Brute Force) vào hệ thống phòng khám"
+           },
+           "startsAt": "2026-10-24T10:28:10Z",
+
+[GIAI ĐOẠN D] ĐIỀU TRA VÀ TRUY VẾT SỰ CỐ BẰNG LOGQL:
+  1. Thống kê qua LogQL {job="webapp"} |= "LOGIN_FAILED":
+     * Tổng số sự kiện phát hiện: 30
+     * Địa chỉ IP nguồn tấn công : ['172.27.0.1']
+     * Tài khoản mục tiêu        : ['admin']
+     * Thời điểm thử sai đầu tiên: 2026-10-24 17:23:37
+     * Thời điểm thử sai cuối cùng: 2026-10-24 17:28:09
+  2. Đối chiếu Nginx access log ({job="nginx"} |= "POST /login"): ghi nhận 10 requests.
+  3. Kiểm tra xâm nhập thành công ({job="webapp"} |= "LOGIN_SUCCESS"):
+     [✓] KẾT LUẬN: 0 sự kiện LOGIN_SUCCESS. Kẻ tấn công thất bại hoàn toàn.
+     [✓] Dữ liệu bệnh nhân và quyền quản trị được bảo vệ an toàn 100%.
+
+================================================================================
+KẾT THÚC KỊCH BẢN SỰ CỐ AN TOÀN THÔNG TIN
+================================================================================

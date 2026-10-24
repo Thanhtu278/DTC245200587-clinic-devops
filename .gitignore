@@ -2,8 +2,7 @@
 .env
 nginx/certs/*.key
 
-# Evidence & Logs
-evidence/
+# Logs
 *.log
 
 # Persistent volumes & data

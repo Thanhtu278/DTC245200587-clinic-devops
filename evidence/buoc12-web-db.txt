@@ -1,0 +1,74 @@
+=================================================================
+BẰNG CHỨNG BƯỚC 1 & 2: WEB FLASK, POSTGRESQL & PGADMIN
+Sinh viên: Ma Thị Thanh Tú - MSSV: DTC245200587
+=================================================================
+
+--- 1. TRẠNG THÁI CÁC CONTAINER (DOCKER COMPOSE PS) ---
+NAME             IMAGE                 COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+clinic_db        postgres:16.4         "docker-entrypoint.s…"   db        About a minute ago   Up About a minute (healthy)   5432/tcp
+clinic_pgadmin   dpage/pgadmin4:8.11   "/entrypoint.sh"         pgadmin   About a minute ago   Up 58 seconds                 443/tcp, 0.0.0.0:8081->80/tcp, [::]:8081->80/tcp
+clinic_web       clinic-web            "gunicorn --bind 0.0…"   web       About a minute ago   Up 58 seconds                 0.0.0.0:8080->8000/tcp, [::]:8080->8000/tcp
+
+--- 2. KIỂM TRA ENDPOINTS HEALTH VÀ LOGIN ---
+GET /health -> Status: 200, Body: OK
+GET /login -> Status: 200
+
+--- 3. MÔ PHỎNG ĐĂNG NHẬP THẤT BẠI (KIỂM TRA GHI LOG STDERR) ---
+Đăng nhập sai pass (letan01) -> Status code: 401
+Đăng nhập user không tồn tại -> Status code: 401
+Log web container tương ứng:
+  LOGIN_FAILED ip=172.27.0.1 user=letan01 reason=wrong_password
+  LOGIN_FAILED ip=172.27.0.1 user=user_khong_ton_tai reason=unknown_user
+
+--- 4. MÔ PHỎNG NGHIỆP VỤ LỄ TÂN (letan01) ---
+Lễ tân đăng nhập thành công -> Status: 200, URL: http://localhost:8080/patients
+  Ghi nhận log: LOGIN_SUCCESS ip=172.27.0.1 user=letan01
+Tạo bệnh nhân mới BN999 -> Status: 200, Chuyển hướng: http://localhost:8080/patients
+Đặt lịch khám bs.nguyen lúc 2026-11-15T09:00 -> Status: 200, Kết quả: Thành công
+Thử đặt TRÙNG giờ với bs.nguyen lúc 2026-11-15T09:00 -> Status: 200
+  => HỆ THỐNG TỪ CHỐI CHÍNH XÁC: 'Bác sĩ đã có lịch khám vào khung giờ này!'
+Lễ tân cố truy cập trang Admin (/admin/reports) -> Status: 403 (Bị từ chối 403 Forbidden)
+
+--- 5. MÔ PHỎNG NGHIỆP VỤ BÁC SĨ (bs.nguyen) ---
+Bác sĩ An (bs.nguyen) đăng nhập -> Status: 200
+Lịch khám ID 11 đang ở trạng thái: 'booked'
+Bác sĩ An nhập bệnh án cho lịch khám ID 11 -> Status: 200
+Trạng thái lịch khám ID 11 trong DB sau khi lưu bệnh án: 'done' (Tự động chuyển 'done')
+Bác sĩ An cố xem/ghi bệnh án của Bác sĩ khác (Lịch ID 2) -> Status: 403 (Bị từ chối 403 Forbidden)
+
+--- 6. KIỂM TRA PGADMIN (PORT 8081) ---
+Truy cập pgAdmin http://localhost:8081/ -> HTTP Status: 200
+  Tiêu đề trang pgAdmin: 'pgAdmin 4'
+
+--- 7. KIỂM TRA POSTGRESQL & PHÂN QUYỀN CLINIC_APP (\dp) ---
+Số lượng bản ghi trong 5 bảng:
+  users: 6, doctors: 4, patients: 13, appointments: 11, medical_records: 4
+
+Kiểm tra quyền truy cập bảng của clinic_app (\dp):
+                                               Access privileges
+ Schema |          Name          |   Type   |         Access privileges         | Column privileges | Policies 
+--------+------------------------+----------+-----------------------------------+-------------------+----------
+ public | appointments           | table    | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |                        |          | clinic_app=arwd/clinic_admin      |                   | 
+ public | appointments_id_seq    | sequence | clinic_admin=rwU/clinic_admin    +|                   | 
+        |                        |          | clinic_app=rU/clinic_admin        |                   | 
+ public | doctors                | table    | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |                        |          | clinic_app=arwd/clinic_admin      |                   | 
+ public | doctors_id_seq         | sequence | clinic_admin=rwU/clinic_admin    +|                   | 
+        |                        |          | clinic_app=rU/clinic_admin        |                   | 
+ public | medical_records        | table    | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |                        |          | clinic_app=arwd/clinic_admin      |                   | 
+ public | medical_records_id_seq | sequence | clinic_admin=rwU/clinic_admin    +|                   | 
+        |                        |          | clinic_app=rU/clinic_admin        |                   | 
+ public | patients               | table    | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |                        |          | clinic_app=arwd/clinic_admin      |                   | 
+ public | patients_id_seq        | sequence | clinic_admin=rwU/clinic_admin    +|                   | 
+        |                        |          | clinic_app=rU/clinic_admin        |                   | 
+ public | users                  | table    | clinic_admin=arwdDxt/clinic_admin+|                   | 
+        |                        |          | clinic_app=arwd/clinic_admin      |                   | 
+ public | users_id_seq           | sequence | clinic_admin=rwU/clinic_admin    +|                   | 
+        |                        |          | clinic_app=rU/clinic_admin        |                   | 
+(10 rows)
+
+
+

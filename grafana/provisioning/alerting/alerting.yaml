@@ -1,0 +1,79 @@
+# ==============================================================================
+# Grafana Alerting Provisioning: Contact Point, Policy & Alert Rule
+# Sinh viên: Ma Thị Thanh Tú - DTC245200587
+# ==============================================================================
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: "alert-sink-webhook"
+    receivers:
+      - uid: "alert-sink-recv"
+        type: "webhook"
+        disableResolveMessage: false
+        settings:
+          url: "http://alert-sink:5001/webhook"
+          httpMethod: "POST"
+
+policies:
+  - orgId: 1
+    receiver: "alert-sink-webhook"
+    group_by: ["alertname"]
+    group_wait: 5s
+    group_interval: 10s
+    repeat_interval: 1h
+
+groups:
+  - orgId: 1
+    name: "Clinic Security Alerts"
+    folder: "Clinic Monitoring"
+    interval: 10s
+    rules:
+      - uid: "clinic-brute-force"
+        title: "Clinic - Brute force login"
+        condition: "C"
+        for: "0s"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasourceUid: "Loki"
+            model:
+              editorMode: "code"
+              expr: "sum(count_over_time({job=\"webapp\"} |= \"LOGIN_FAILED\" [1m]))"
+              queryType: "range"
+              refId: "A"
+          - refId: "B"
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                name: "Expression"
+                type: "__expr__"
+                uid: "__expr__"
+              expression: "A"
+              reducer: "last"
+              type: "reduce"
+              settings:
+                mode: "dropNN"
+              refId: "B"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                name: "Expression"
+                type: "__expr__"
+                uid: "__expr__"
+              expression: "$B > 5"
+              type: "math"
+              refId: "C"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          category: "security"
+          service: "webapp"
+        annotations:
+          summary: "Phát hiện tấn công dò mật khẩu (Brute Force) vào hệ thống phòng khám"
+          description: "Ghi nhận hơn 5 lần đăng nhập thất bại trong 1 phút qua webapp. Nguy cơ tài khoản bị tấn công dò mật khẩu. Hướng dẫn truy vết: Chạy LogQL {job=\"webapp\"} |= \"LOGIN_FAILED\" để xác định IP và username bị nhắm tới."

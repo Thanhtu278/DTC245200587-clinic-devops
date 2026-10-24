@@ -106,6 +106,7 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       - prometheus
+      - loki
     networks:
       - clinic_net
 
@@ -148,11 +149,47 @@ services:
     networks:
       - clinic_net
 
+  loki:
+    image: grafana/loki:3.7.7
+    container_name: clinic_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - loki_data:/loki
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    networks:
+      - clinic_net
+
+  promtail:
+    image: grafana/promtail:3.6.8
+    container_name: clinic_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+    depends_on:
+      - loki
+    networks:
+      - clinic_net
+
+  alert-sink:
+    build:
+      context: ./alert-sink
+      dockerfile: Dockerfile
+    image: clinic-alert-sink:1.0
+    container_name: clinic_alert_sink
+    restart: unless-stopped
+    networks:
+      - clinic_net
+
 volumes:
   db_data:
   pgadmin_data:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 networks:
   clinic_net:
