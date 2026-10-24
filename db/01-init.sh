@@ -95,12 +95,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" << '
     -- letan01 (Letan@123456)
     -- bs.nguyen, bs.tran, bs.le, bs.pham (Doctor@123456)
     INSERT INTO users (username, password_hash, full_name, role, is_active) VALUES
-    ('admin', 'pbkdf2:sha256:260000$adminsalt123$561c393a310a9b38ee04863752ea387a04cdffd63140c833c1c958683cbfb29f', 'Quản Trị Viên Hệ Thống', 'admin', true),
-    ('letan01', 'pbkdf2:sha256:260000$letansalt123$45a9a5c325216c3e32c07793d5bde1818baf53666cc452c24ae8201048f291e0', 'Lễ Tân Nguyễn Thị Mai', 'receptionist', true),
-    ('bs.nguyen', 'pbkdf2:sha256:260000$doctorsalt123$fd009f860dfa725eabf821d7921fa1c483e0b88aa2316128d9f1b6d902fb5802', 'BS.CKI Nguyễn Văn An', 'doctor', true),
-    ('bs.tran', 'pbkdf2:sha256:260000$doctorsalt123$fd009f860dfa725eabf821d7921fa1c483e0b88aa2316128d9f1b6d902fb5802', 'ThS.BS Trần Thị Bích', 'doctor', true),
-    ('bs.le', 'pbkdf2:sha256:260000$doctorsalt123$fd009f860dfa725eabf821d7921fa1c483e0b88aa2316128d9f1b6d902fb5802', 'BS. Lê Hoàng Cường', 'doctor', true),
-    ('bs.pham', 'pbkdf2:sha256:260000$doctorsalt123$fd009f860dfa725eabf821d7921fa1c483e0b88aa2316128d9f1b6d902fb5802', 'BS. Phạm Thu Dung', 'doctor', true)
+    ('admin', 'scrypt:32768:8:1$R3eFmdmzcgi706uB$4ab08ef875e36fcbb089f8bd359f5f80bcc0a7c618b4eae6682288f91af2908b35f91ccb6a66cc1960f946324894ded192612f099426f3868e9ffb01b265cefb', 'Quản Trị Viên Hệ Thống', 'admin', true),
+    ('letan01', 'scrypt:32768:8:1$ab1xuQ36SDpUbhQK$c81621a3c93fc34a4ffcc66164561b45156fa000055e64906e52f2381be6d37b7a7ce7b6bbff91be998e430e43b57385a2cacd25ba6c703fa62fdbbe2e37c382', 'Lễ Tân Nguyễn Thị Mai', 'receptionist', true),
+    ('bs.nguyen', 'scrypt:32768:8:1$JM2f1AKau8072aqj$1a2e3b6398703b566e0767560d07b3688156fe402e96e9676eaf220678ab80730d4ea2b00a78c647d69c491939afa13fbf3375e72639cbeb1d561938892a40cf', 'BS.CKI Nguyễn Văn An', 'doctor', true),
+    ('bs.tran', 'scrypt:32768:8:1$JM2f1AKau8072aqj$1a2e3b6398703b566e0767560d07b3688156fe402e96e9676eaf220678ab80730d4ea2b00a78c647d69c491939afa13fbf3375e72639cbeb1d561938892a40cf', 'ThS.BS Trần Thị Bích', 'doctor', true),
+    ('bs.le', 'scrypt:32768:8:1$JM2f1AKau8072aqj$1a2e3b6398703b566e0767560d07b3688156fe402e96e9676eaf220678ab80730d4ea2b00a78c647d69c491939afa13fbf3375e72639cbeb1d561938892a40cf', 'BS. Lê Hoàng Cường', 'doctor', true),
+    ('bs.pham', 'scrypt:32768:8:1$JM2f1AKau8072aqj$1a2e3b6398703b566e0767560d07b3688156fe402e96e9676eaf220678ab80730d4ea2b00a78c647d69c491939afa13fbf3375e72639cbeb1d561938892a40cf', 'BS. Phạm Thu Dung', 'doctor', true)
     ON CONFLICT (username) DO UPDATE 
         SET password_hash = EXCLUDED.password_hash,
             full_name = EXCLUDED.full_name,

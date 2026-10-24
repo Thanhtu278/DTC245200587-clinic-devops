@@ -23,7 +23,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -subj "/C=VN/ST=ThaiNguyen/O=ICTU/OU=DTC245200587/CN=192.168.30.128" \
   -addext "subjectAltName = IP:192.168.30.128,DNS:localhost"
 
-chmod 600 "$CERTS_DIR/server.key"
+chmod 644 "$CERTS_DIR/server.key"
 chmod 644 "$CERTS_DIR/server.crt"
 
 echo "[✓] Đã tạo chứng chỉ thành công tại: $CERTS_DIR"
