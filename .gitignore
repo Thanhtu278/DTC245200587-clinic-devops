@@ -1,0 +1,21 @@
+# Environment & Secrets
+.env
+nginx/certs/*.key
+
+# Evidence & Logs
+evidence/
+*.log
+
+# Persistent volumes & data
+data/
+postgres_data/
+pgadmin_data/
+grafana_data/
+prometheus_data/
+loki_data/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env.local
