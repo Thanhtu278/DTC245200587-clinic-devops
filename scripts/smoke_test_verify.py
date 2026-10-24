@@ -167,10 +167,18 @@ def run_tests():
 
     # 5. PGADMIN
     log("--- 5. KIỂM TRA DỊCH VỤ PGADMIN (SUBPATH /pgadmin/) ---")
-    r_pga = requests.get(f"{BASE_URL}/pgadmin/", verify=False)
-    log(f"  [+] Truy cập pgAdmin qua Nginx reverse proxy ({BASE_URL}/pgadmin/): HTTP {r_pga.status_code}")
-    assert r_pga.status_code == 200, f"pgAdmin returned status {r_pga.status_code}"
-    if "<title>pgAdmin" in r_pga.text or "pgAdmin" in r_pga.text:
+    st_pga = 0
+    body_pga = ""
+    for _ in range(15):
+        r_pga = requests.get(f"{BASE_URL}/pgadmin/", verify=False)
+        st_pga = r_pga.status_code
+        body_pga = r_pga.text
+        if st_pga == 200:
+            break
+        time.sleep(2)
+    log(f"  [+] Truy cập pgAdmin qua Nginx reverse proxy ({BASE_URL}/pgadmin/): HTTP {st_pga}")
+    assert st_pga == 200, f"pgAdmin returned status {st_pga}"
+    if "<title>pgAdmin" in body_pga or "pgAdmin" in body_pga:
         log("      => Đạt: Giao diện pgAdmin 4 phản hồi đúng tiêu đề, hoạt động bình thường qua proxy.")
     log("")
 
@@ -185,8 +193,8 @@ def run_tests():
                     k, v = line.strip().split("=", 1)
                     env_vars[k.strip()] = v.strip().strip('"').strip("'")
     
-    gf_u = env_vars.get("GF_SECURITY_ADMIN_USER", "admin")
-    gf_p = env_vars.get("GF_SECURITY_ADMIN_PASSWORD", "GrafanaAdmin@2026!")
+    gf_u = env_vars.get("GRAFANA_ADMIN_USER", env_vars.get("GF_SECURITY_ADMIN_USER", "admin"))
+    gf_p = env_vars.get("GRAFANA_ADMIN_PASSWORD", env_vars.get("GF_SECURITY_ADMIN_PASSWORD", "GrafanaAdmin@2026!"))
     gf_auth = (gf_u, gf_p)
 
     r_ds = requests.get(f"{BASE_URL}/grafana/api/datasources", auth=gf_auth, verify=False)
