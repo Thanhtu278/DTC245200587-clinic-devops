@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Phòng Khám Đa Khoa DTC245200587{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  {% if session.get('user_id') %}
+  <nav class="navbar">
+    <a href="{{ url_for('index') }}" class="brand">
+      <span class="brand-icon">🏥</span>
+      <span>Phòng Khám DTC</span>
+    </a>
+    <ul class="nav-menu">
+      {% if session.get('role') == 'admin' %}
+        <li><a href="{{ url_for('admin.reports') }}" class="nav-link">📊 Báo Cáo</a></li>
+        <li><a href="{{ url_for('patients.list_patients') }}" class="nav-link">👥 Bệnh Nhân</a></li>
+        <li><a href="{{ url_for('appointments.list_appointments') }}" class="nav-link">📅 Lịch Khám</a></li>
+        <li><a href="{{ url_for('admin.list_users') }}" class="nav-link">⚙️ Quản Trị User</a></li>
+      {% elif session.get('role') == 'receptionist' %}
+        <li><a href="{{ url_for('patients.list_patients') }}" class="nav-link">👥 Quản Lý Bệnh Nhân</a></li>
+        <li><a href="{{ url_for('appointments.list_appointments') }}" class="nav-link">📅 Đặt Lịch Khám</a></li>
+      {% elif session.get('role') == 'doctor' %}
+        <li><a href="{{ url_for('doctor.appointments') }}" class="nav-link">🩺 Lịch Khám Của Tôi</a></li>
+      {% endif %}
+    </ul>
+    <div class="user-nav">
+      <div class="user-badge">
+        <span class="user-name">{{ session.get('full_name') }}</span>
+        <span class="role-pill role-{{ session.get('role') }}">
+          {% if session.get('role') == 'admin' %}Quản Trị Viên
+          {% elif session.get('role') == 'receptionist' %}Lễ Tân
+          {% elif session.get('role') == 'doctor' %}Bác Sĩ
+          {% else %}{{ session.get('role') }}{% endif %}
+        </span>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary btn-sm">Đăng xuất</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="main-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if error_title %}
+      <div class="card" style="text-align: center; padding: 3rem 1rem;">
+        <h2 style="color: var(--danger); margin-bottom: 1rem;">{{ error_title }}</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">{{ error_msg }}</p>
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Quay về trang chủ</a>
+      </div>
+    {% else %}
+      {% block content %}{% endblock %}
+    {% endif %}
+  </main>
+
+  <footer class="footer">
+    Hệ Thống Quản Lý Phòng Khám / Bệnh Viện • SV: Ma Thị Thanh Tú - MSSV: DTC245200587 • Môn TK&QT HTPM
+  </footer>
+</body>
+</html>

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Quản Trị Người Dùng - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Quản Trị Tài Khoản Người Dùng</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Thêm mới tài khoản, phân quyền, quản lý bác sĩ và khóa tài khoản</p>
+  </div>
+  <a href="{{ url_for('admin.new_user') }}" class="btn btn-primary">➕ Tạo Người Dùng Mới</a>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tên Đăng Nhập</th>
+          <th>Họ và Tên</th>
+          <th>Vai Trò</th>
+          <th>Thông Tin Bác Sĩ (Nếu có)</th>
+          <th>Trạng Thái</th>
+          <th>Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.full_name }}</td>
+          <td>
+            <span class="role-pill role-{{ u.role }}">
+              {% if u.role == 'admin' %}Quản trị
+              {% elif u.role == 'receptionist' %}Lễ tân
+              {% elif u.role == 'doctor' %}Bác sĩ
+              {% else %}{{ u.role }}{% endif %}
+            </span>
+          </td>
+          <td>
+            {% if u.role == 'doctor' and u.specialty %}
+              {{ u.specialty }} • {{ u.room }} ({{ u.doctor_phone }})
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge badge-active">Hoạt động</span>
+            {% else %}
+              <span class="badge badge-locked">Đã khóa</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              {% if u.id != session.get('user_id') %}
+                <form method="POST" action="{{ url_for('admin.toggle_active', id=u.id) }}" style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-{{ 'danger' if u.is_active else 'success' }} btn-sm" onclick="return confirm('Thay đổi trạng thái tài khoản này?')">
+                    {{ 'Khóa' if u.is_active else 'Mở khóa' }}
+                  </button>
+                </form>
+              {% endif %}
+              <button type="button" class="btn btn-secondary btn-sm" onclick="promptReset('{{ u.id }}', '{{ u.username }}')">Đổi pass</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Hidden reset form -->
+<form id="resetForm" method="POST" action="" style="display: none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" id="resetPasswordInput" name="new_password">
+</form>
+
+<script>
+function promptReset(id, username) {
+  const newPw = prompt(`Nhập mật khẩu mới cho tài khoản '${username}':`);
+  if (newPw && newPw.trim() !== "") {
+    const form = document.getElementById('resetForm');
+    form.action = `/admin/users/${id}/reset-password`;
+    document.getElementById('resetPasswordInput').value = newPw.trim();
+    form.submit();
+  }
+}
+</script>
+{% endblock %}

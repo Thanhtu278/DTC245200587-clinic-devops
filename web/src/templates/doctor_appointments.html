@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Lịch Khám Của Tôi - Bác Sĩ{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🩺 Danh Sách Lịch Khám Của Tôi</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Xem danh sách bệnh nhân đã hẹn, nhập chẩn đoán và hoàn thành bệnh án</p>
+  </div>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Thời Gian Khám</th>
+          <th>Mã BN</th>
+          <th>Họ Tên Bệnh Nhân</th>
+          <th>Tuổi & Giới Tính</th>
+          <th>Điện Thoại</th>
+          <th>Lý Do Khám</th>
+          <th>Trạng Thái</th>
+          <th>Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td><strong>{{ a.scheduled_at.strftime('%d/%m/%Y %H:%M') if a.scheduled_at else '' }}</strong></td>
+          <td><strong style="color: var(--primary);">{{ a.patient_code }}</strong></td>
+          <td><strong>{{ a.patient_name }}</strong></td>
+          <td>
+            {% if a.dob %}{{ ((a.scheduled_at.date() - a.dob).days // 365) }} tuổi{% else %}-{% endif %}
+            ({% if a.gender == 'M' %}Nam{% elif a.gender == 'F' %}Nữ{% else %}Khác{% endif %})
+          </td>
+          <td>{{ a.phone }}</td>
+          <td>{{ a.reason or 'Khám định kỳ' }}</td>
+          <td>
+            <span class="badge badge-{{ a.status }}">
+              {% if a.status == 'booked' %}Đã đặt
+              {% elif a.status == 'confirmed' %}Đã xác nhận
+              {% elif a.status == 'done' %}Đã khám
+              {% elif a.status == 'cancelled' %}Đã hủy
+              {% else %}{{ a.status }}{% endif %}
+            </span>
+          </td>
+          <td>
+            {% if a.status in ('booked', 'confirmed') %}
+              <a href="{{ url_for('doctor.medical_record', id=a.id) }}" class="btn btn-primary btn-sm">📝 Khám & Ghi Bệnh Án</a>
+            {% elif a.status == 'done' %}
+              <a href="{{ url_for('doctor.medical_record', id=a.id) }}" class="btn btn-secondary btn-sm">👁️ Xem Bệnh Án</a>
+            {% else %}
+              <span style="color: var(--text-muted); font-size: 0.8rem;">Đã hủy</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Hiện tại bạn chưa có lịch hẹn khám nào.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

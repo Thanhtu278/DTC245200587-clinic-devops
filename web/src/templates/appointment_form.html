@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Đặt Lịch Khám Mới - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Đặt Lịch Khám Bệnh Nhân</h1>
+  <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">⬅ Quay lại</a>
+</div>
+
+<div class="card" style="max-width: 680px; margin: 0 auto;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    
+    <div class="form-group">
+      <label class="form-label" for="patient_id">Chọn Bệnh Nhân*</label>
+      <select id="patient_id" name="patient_id" class="form-control" required>
+        <option value="">-- Chọn bệnh nhân từ hệ thống --</option>
+        {% for p in patients %}
+          <option value="{{ p.id }}" {{ 'selected' if (preselect_patient and preselect_patient|int == p.id) or (form.patient_id and form.patient_id|int == p.id) }}>
+            {{ p.patient_code }} - {{ p.full_name }} ({{ p.phone }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="doctor_id">Chọn Bác Sĩ & Chuyên Khoa*</label>
+      <select id="doctor_id" name="doctor_id" class="form-control" required>
+        <option value="">-- Chọn bác sĩ phụ trách --</option>
+        {% for d in doctors %}
+          <option value="{{ d.id }}" {{ 'selected' if form.doctor_id and form.doctor_id|int == d.id }}>
+            {{ d.full_name }} • {{ d.specialty }} ({{ d.room }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="scheduled_at">Ngày Giờ Hẹn Khám (Không đặt trong quá khứ)*</label>
+      <input type="datetime-local" id="scheduled_at" name="scheduled_at" class="form-control" value="{{ form.scheduled_at or '' }}" required>
+      <small style="color: var(--text-muted);">Lưu ý: Hệ thống tự động chống trùng lịch đối với cùng một bác sĩ.</small>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="reason">Lý Do Khám / Triệu Chứng Ban Đầu</label>
+      <textarea id="reason" name="reason" class="form-control" rows="3" placeholder="Mô tả triệu chứng bệnh nhân gặp phải...">{{ form.reason or '' }}</textarea>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+      <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">Hủy</a>
+      <button type="submit" class="btn btn-primary">Xác Nhận Đặt Lịch</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Quản Lý Lịch Khám - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Lịch Khám Chuyên Khoa</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Đặt lịch, điều phối và xác nhận lịch hẹn khám của bệnh nhân</p>
+  </div>
+  <a href="{{ url_for('appointments.new_appointment') }}" class="btn btn-primary">➕ Đặt Lịch Khám Mới</a>
+</div>
+
+<div class="card" style="padding: 1rem;">
+  <form method="GET" action="{{ url_for('appointments.list_appointments') }}" class="form-row" style="align-items: flex-end;">
+    <div>
+      <label class="form-label">Lọc theo ngày</label>
+      <input type="date" name="date" value="{{ date_filter }}" class="form-control">
+    </div>
+    <div>
+      <label class="form-label">Lọc theo Bác sĩ</label>
+      <select name="doctor_id" class="form-control">
+        <option value="">-- Tất cả bác sĩ --</option>
+        {% for d in doctors %}
+          <option value="{{ d.id }}" {{ 'selected' if doctor_filter == d.id|string }}>{{ d.full_name }} ({{ d.specialty }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Trạng thái</label>
+      <select name="status" class="form-control">
+        <option value="">-- Tất cả trạng thái --</option>
+        <option value="booked" {{ 'selected' if status_filter == 'booked' }}>Đã đặt (Booked)</option>
+        <option value="confirmed" {{ 'selected' if status_filter == 'confirmed' }}>Đã xác nhận (Confirmed)</option>
+        <option value="done" {{ 'selected' if status_filter == 'done' }}>Đã khám (Done)</option>
+        <option value="cancelled" {{ 'selected' if status_filter == 'cancelled' }}>Đã hủy (Cancelled)</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Lọc</button>
+      <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">Đặt lại</a>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Thời Gian Hẹn</th>
+          <th>Bệnh Nhân</th>
+          <th>Bác Sĩ Khám</th>
+          <th>Chuyên Khoa & Phòng</th>
+          <th>Lý Do Khám</th>
+          <th>Trạng Thái</th>
+          <th>Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td><strong>{{ a.scheduled_at.strftime('%d/%m/%Y %H:%M') if a.scheduled_at else '' }}</strong></td>
+          <td>
+            <a href="{{ url_for('patients.patient_detail', id=a.patient_id) }}" style="color: var(--primary); font-weight: 600; text-decoration: none;">
+              {{ a.patient_name }} ({{ a.patient_code }})
+            </a>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">SĐT: {{ a.patient_phone }}</div>
+          </td>
+          <td><strong>{{ a.doctor_name }}</strong></td>
+          <td>{{ a.specialty }} • {{ a.room }}</td>
+          <td>{{ a.reason or 'Khám tổng quát' }}</td>
+          <td>
+            <span class="badge badge-{{ a.status }}">
+              {% if a.status == 'booked' %}Đã đặt
+              {% elif a.status == 'confirmed' %}Đã xác nhận
+              {% elif a.status == 'done' %}Đã khám
+              {% elif a.status == 'cancelled' %}Đã hủy
+              {% else %}{{ a.status }}{% endif %}
+            </span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              {% if a.status == 'booked' %}
+                <form method="POST" action="{{ url_for('appointments.confirm_appointment', id=a.id) }}" style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Xác nhận lịch khám này?')">Xác nhận</button>
+                </form>
+              {% endif %}
+              {% if a.status != 'done' and a.status != 'cancelled' %}
+                <form method="POST" action="{{ url_for('appointments.cancel_appointment', id=a.id) }}" style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn hủy lịch hẹn này?')">Hủy lịch</button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Không có lịch khám nào trong danh sách.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

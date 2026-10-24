@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Bệnh Án - {{ appointment.patient_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Hồ Sơ Khám Bệnh & Đơn Thuốc</h1>
+  <a href="{{ url_for('doctor.appointments') }}" class="btn btn-secondary">⬅ Quay lại danh sách lịch</a>
+</div>
+
+<div class="card" style="background: #f0fdf4; border-color: #bbf7d0;">
+  <h3 style="color: #166534; margin-bottom: 0.75rem;">Thông Tin Lượt Khám</h3>
+  <div class="form-row">
+    <div><strong>Bệnh nhân:</strong> {{ appointment.patient_name }} ({{ appointment.patient_code }})</div>
+    <div><strong>Giới tính:</strong> {% if appointment.gender == 'M' %}Nam{% elif appointment.gender == 'F' %}Nữ{% else %}Khác{% endif %}</div>
+    <div><strong>Điện thoại:</strong> {{ appointment.phone }}</div>
+    <div><strong>Thời gian:</strong> {{ appointment.scheduled_at.strftime('%d/%m/%Y %H:%M') if appointment.scheduled_at else '' }}</div>
+  </div>
+  <div style="margin-top: 0.5rem;">
+    <strong>Lý do đến khám:</strong> {{ appointment.reason or 'Không có' }}
+  </div>
+</div>
+
+<div class="card" style="max-width: 800px; margin: 1.5rem auto;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    
+    <div class="form-group">
+      <label class="form-label" for="diagnosis">Chẩn Đoán Y Khoa*</label>
+      <textarea id="diagnosis" name="diagnosis" class="form-control" rows="3" placeholder="Nhập chẩn đoán kết luận của bác sĩ..." required {{ 'readonly' if appointment.status == 'done' }}>{{ record.diagnosis or '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="prescription">Đơn Thuốc & Hướng Dẫn Sử Dụng</label>
+      <textarea id="prescription" name="prescription" class="form-control" rows="4" placeholder="Tên thuốc, liều dùng, thời điểm uống..." {{ 'readonly' if appointment.status == 'done' }}>{{ record.prescription or '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="notes">Ghi Chú & Lời Dặn Tái Khám</label>
+      <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Chế độ dinh dưỡng, lời dặn bệnh nhân..." {{ 'readonly' if appointment.status == 'done' }}>{{ record.notes or '' }}</textarea>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+      <a href="{{ url_for('doctor.appointments') }}" class="btn btn-secondary">Đóng</a>
+      {% if appointment.status in ('booked', 'confirmed') %}
+        <button type="submit" class="btn btn-success" onclick="return confirm('Xác nhận lưu bệnh án và chuyển trạng thái lịch khám sang ĐÃ KHÁM (done)?')">
+          💾 Lưu Bệnh Án & Hoàn Thành Lượt Khám
+        </button>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

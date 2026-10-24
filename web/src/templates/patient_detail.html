@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Hồ Sơ: {{ patient.full_name }} - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Hồ Sơ Bệnh Nhân: {{ patient.full_name }}</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Mã định danh: <strong style="color: var(--primary);">{{ patient.patient_code }}</strong></p>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="{{ url_for('patients.edit_patient', id=patient.id) }}" class="btn btn-secondary">✏️ Chỉnh Sửa</a>
+    <a href="{{ url_for('appointments.new_appointment', patient_id=patient.id) }}" class="btn btn-primary">➕ Đặt Lịch Khám Mới</a>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-bottom: 1rem; color: var(--secondary);">Thông Tin Cá Nhân</h3>
+  <div class="form-row">
+    <div><strong>Ngày sinh:</strong> {{ patient.dob.strftime('%d/%m/%Y') if patient.dob else 'Chưa rõ' }}</div>
+    <div><strong>Giới tính:</strong> {% if patient.gender == 'M' %}Nam{% elif patient.gender == 'F' %}Nữ{% else %}Khác{% endif %}</div>
+    <div><strong>Điện thoại:</strong> {{ patient.phone }}</div>
+    <div><strong>Địa chỉ:</strong> {{ patient.address or 'Chưa cập nhật' }}</div>
+  </div>
+</div>
+
+<div class="page-header" style="margin-top: 2rem;">
+  <h2 style="font-size: 1.25rem; font-weight: 700;">Lịch Sử Lượt Khám & Bệnh Án</h2>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Thời Gian Khám</th>
+          <th>Bác Sĩ Phụ Trách</th>
+          <th>Chuyên Khoa / Phòng</th>
+          <th>Lý Do Khám</th>
+          <th>Trạng Thái</th>
+          <th>Chẩn Đoán & Đơn Thuốc</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in appointments %}
+        <tr>
+          <td><strong>{{ a.scheduled_at.strftime('%d/%m/%Y %H:%M') if a.scheduled_at else '' }}</strong></td>
+          <td>{{ a.doctor_name }}</td>
+          <td>{{ a.specialty }} ({{ a.room }})</td>
+          <td>{{ a.reason or 'Khám định kỳ' }}</td>
+          <td>
+            <span class="badge badge-{{ a.status }}">{{ a.status }}</span>
+          </td>
+          <td>
+            {% if a.diagnosis %}
+              <div><strong>Chẩn đoán:</strong> {{ a.diagnosis }}</div>
+              {% if a.prescription %}
+                <div style="font-size: 0.85rem; color: var(--text-muted); white-space: pre-line;"><strong>Đơn thuốc:</strong>
+{{ a.prescription }}</div>
+              {% endif %}
+            {% else %}
+              <span style="color: var(--text-muted); font-style: italic;">Chưa có bệnh án</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Bệnh nhân chưa có lịch sử khám bệnh nào.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

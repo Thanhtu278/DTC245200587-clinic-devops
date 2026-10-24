@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Báo Cáo & Thống Kê - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Báo Cáo Thống Kê Lượt Khám</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Tổng hợp lượt khám theo trạng thái, chuyên khoa và bác sĩ</p>
+  </div>
+  <form method="GET" action="{{ url_for('admin.reports') }}" style="display: flex; gap: 0.5rem;">
+    <select name="date_filter" class="form-control" onchange="this.form.submit()">
+      <option value="all" {{ 'selected' if date_filter == 'all' }}>Tất cả thời gian</option>
+      <option value="today" {{ 'selected' if date_filter == 'today' }}>Hôm nay</option>
+      <option value="week" {{ 'selected' if date_filter == 'week' }}>7 ngày gần nhất</option>
+      <option value="month" {{ 'selected' if date_filter == 'month' }}>30 ngày gần nhất</option>
+    </select>
+  </form>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card" style="border-left: 4px solid var(--primary);">
+    <span class="stat-title">Tổng Lượt Khám</span>
+    <span class="stat-value">{{ stats.total or 0 }}</span>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--success);">
+    <span class="stat-title">Đã Khám (Done)</span>
+    <span class="stat-value" style="color: var(--success);">{{ stats.done or 0 }}</span>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--warning);">
+    <span class="stat-title">Đã Xác Nhận (Confirmed)</span>
+    <span class="stat-value" style="color: var(--warning);">{{ stats.confirmed or 0 }}</span>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--info);">
+    <span class="stat-title">Đã Đặt (Booked)</span>
+    <span class="stat-value" style="color: var(--info);">{{ stats.booked or 0 }}</span>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--danger);">
+    <span class="stat-title">Đã Hủy (Cancelled)</span>
+    <span class="stat-value" style="color: var(--danger);">{{ stats.cancelled or 0 }}</span>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+    <span class="stat-title">Tổng Bệnh Nhân</span>
+    <span class="stat-value">{{ total_patients }}</span>
+  </div>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+    <h3 style="font-size: 1.1rem; color: var(--secondary);">Thống Kê Chi Tiết Theo Bác Sĩ & Chuyên Khoa</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Bác Sĩ Phụ Trách</th>
+          <th>Chuyên Khoa</th>
+          <th>Phòng Khám</th>
+          <th>Tổng Lượt Đăng Ký</th>
+          <th>Đã Khám (Done)</th>
+          <th>Đã Xác Nhận</th>
+          <th>Chờ Khám</th>
+          <th>Đã Hủy</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in doc_stats %}
+        <tr>
+          <td><strong>{{ d.doctor_name }}</strong></td>
+          <td><span class="role-pill role-doctor">{{ d.specialty }}</span></td>
+          <td>{{ d.room }}</td>
+          <td><strong>{{ d.total }}</strong></td>
+          <td><span class="badge badge-done">{{ d.done }}</span></td>
+          <td><span class="badge badge-confirmed">{{ d.confirmed }}</span></td>
+          <td><span class="badge badge-booked">{{ d.booked }}</span></td>
+          <td><span class="badge badge-cancelled">{{ d.cancelled }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

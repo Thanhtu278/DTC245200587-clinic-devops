@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "clinic",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "clinic",
+      "Username": "clinic_admin",
+      "SSLMode": "prefer"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Sửa Thông Tin Bệnh Nhân' if edit else 'Tiếp Nhận Bệnh Nhân Mới' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ 'Cập Nhật Thông Tin Bệnh Nhân' if edit else 'Tiếp Nhận Hồ Sơ Bệnh Nhân Mới' }}</h1>
+  <a href="{{ url_for('patients.list_patients') }}" class="btn btn-secondary">⬅ Quay lại danh sách</a>
+</div>
+
+<div class="card" style="max-width: 720px; margin: 0 auto;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="patient_code">Mã Bệnh Nhân (Unique)*</label>
+        <input type="text" id="patient_code" name="patient_code" class="form-control" value="{{ patient.patient_code or '' }}" placeholder="Ví dụ: BN013" {{ 'readonly' if edit else 'required' }}>
+        {% if edit %}<small style="color: var(--text-muted);">Mã bệnh nhân không thể thay đổi sau khi tạo.</small>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="full_name">Họ và Tên Bệnh Nhân*</label>
+        <input type="text" id="full_name" name="full_name" class="form-control" value="{{ patient.full_name or '' }}" placeholder="Nhập họ và tên..." required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="dob">Ngày Sinh*</label>
+        <input type="date" id="dob" name="dob" class="form-control" value="{{ patient.dob or '' }}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="gender">Giới Tính*</label>
+        <select id="gender" name="gender" class="form-control" required>
+          <option value="M" {{ 'selected' if patient.gender == 'M' }}>Nam</option>
+          <option value="F" {{ 'selected' if patient.gender == 'F' }}>Nữ</option>
+          <option value="O" {{ 'selected' if patient.gender == 'O' }}>Khác</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="phone">Số Điện Thoại*</label>
+        <input type="tel" id="phone" name="phone" class="form-control" value="{{ patient.phone or '' }}" placeholder="09xxxxxxxx" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="address">Địa Chỉ Thường Trú</label>
+      <textarea id="address" name="address" class="form-control" rows="3" placeholder="Nhập địa chỉ của bệnh nhân...">{{ patient.address or '' }}</textarea>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+      <a href="{{ url_for('patients.list_patients') }}" class="btn btn-secondary">Hủy bỏ</a>
+      <button type="submit" class="btn btn-primary">{{ 'Lưu Thay Đổi' if edit else 'Tạo Hồ Sơ Bệnh Nhân' }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

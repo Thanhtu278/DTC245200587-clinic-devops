@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Đăng Nhập - Hệ Thống Phòng Khám{% endblock %}
+{% block content %}
+<div class="login-wrapper">
+  <div class="login-card">
+    <div style="text-align: center; margin-bottom: 1.5rem;">
+      <span style="font-size: 3rem;">🏥</span>
+      <h2 style="color: var(--secondary); margin-top: 0.5rem;">Đăng Nhập Hệ Thống</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Hệ thống Quản lý Phòng khám DTC245200587</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label class="form-label" for="username">Tên đăng nhập</label>
+        <input type="text" id="username" name="username" class="form-control" placeholder="Nhập tên đăng nhập..." required autofocus>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Mật khẩu</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Nhập mật khẩu..." required>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">Đăng Nhập</button>
+    </form>
+
+    <div class="demo-account-box">
+      <strong>⚡ Điền nhanh tài khoản demo để chấm bài:</strong>
+      <div class="demo-btn-group">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillCreds('admin', 'Admin@123456')">Quản trị viên (admin)</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillCreds('letan01', 'Letan@123456')">Lễ tân (letan01)</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="fillCreds('bs.nguyen', 'Doctor@123456')">Bác sĩ An (bs.nguyen)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function fillCreds(u, p) {
+  document.getElementById('username').value = u;
+  document.getElementById('password').value = p;
+}
+</script>
+{% endblock %}

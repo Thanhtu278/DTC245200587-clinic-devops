@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Danh Sách Bệnh Nhân - Phòng Khám DTC{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Quản Lý Hồ Sơ Bệnh Nhân</h1>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">Tra cứu thông tin, lịch sử khám bệnh và tạo hồ sơ mới</p>
+  </div>
+  <a href="{{ url_for('patients.new_patient') }}" class="btn btn-primary">➕ Thêm Bệnh Nhân Mới</a>
+</div>
+
+<div class="card" style="padding: 1rem;">
+  <form method="GET" action="{{ url_for('patients.list_patients') }}" style="display: flex; gap: 0.75rem;">
+    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm theo Mã bệnh nhân (BN001...), Họ tên hoặc Số điện thoại...">
+    <button type="submit" class="btn btn-primary">🔍 Tìm Kiếm</button>
+    {% if q %}
+      <a href="{{ url_for('patients.list_patients') }}" class="btn btn-secondary">Đặt lại</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card" style="padding: 0;">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Mã BN</th>
+          <th>Họ và Tên</th>
+          <th>Ngày Sinh</th>
+          <th>Giới Tính</th>
+          <th>Số Điện Thoại</th>
+          <th>Địa Chỉ</th>
+          <th>Thao Tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in patients %}
+        <tr>
+          <td><strong style="color: var(--primary);">{{ p.patient_code }}</strong></td>
+          <td><strong>{{ p.full_name }}</strong></td>
+          <td>{{ p.dob.strftime('%d/%m/%Y') if p.dob else '' }}</td>
+          <td>
+            {% if p.gender == 'M' %}Nam
+            {% elif p.gender == 'F' %}Nữ
+            {% else %}Khác{% endif %}
+          </td>
+          <td>{{ p.phone }}</td>
+          <td>{{ p.address or 'Chưa có' }}</td>
+          <td>
+            <a href="{{ url_for('patients.patient_detail', id=p.id) }}" class="btn btn-secondary btn-sm">Xem hồ sơ</a>
+            <a href="{{ url_for('appointments.new_appointment', patient_id=p.id) }}" class="btn btn-primary btn-sm">Đặt lịch</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Không tìm thấy bệnh nhân nào phù hợp.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

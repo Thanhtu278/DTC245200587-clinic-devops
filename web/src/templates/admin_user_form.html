@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Tạo Người Dùng Mới - Quản Trị{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Thêm Tài Khoản Người Dùng</h1>
+  <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">⬅ Quay lại danh sách</a>
+</div>
+
+<div class="card" style="max-width: 650px; margin: 0 auto;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="username">Tên Đăng Nhập*</label>
+        <input type="text" id="username" name="username" class="form-control" value="{{ user.username or '' }}" placeholder="Ví dụ: bs.hoang" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Mật Khẩu Khởi Tạo*</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="Tối thiểu 6 ký tự..." required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="full_name">Họ và Tên Đầy Đủ*</label>
+        <input type="text" id="full_name" name="full_name" class="form-control" value="{{ user.full_name or '' }}" placeholder="Ví dụ: BS. Hoàng Văn Hùng" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="role">Vai Trò Hệ Thống*</label>
+        <select id="role" name="role" class="form-control" onchange="toggleDoctorFields(this.value)" required>
+          <option value="receptionist" {{ 'selected' if user.role == 'receptionist' }}>Lễ Tân (Receptionist)</option>
+          <option value="doctor" {{ 'selected' if user.role == 'doctor' }}>Bác Sĩ (Doctor)</option>
+          <option value="admin" {{ 'selected' if user.role == 'admin' }}>Quản Trị Viên (Admin)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Doctor specific fields -->
+    <div id="doctorFields" style="display: {{ 'block' if user.role == 'doctor' else 'none' }}; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px dashed var(--border); margin-bottom: 1.25rem;">
+      <h4 style="margin-bottom: 0.75rem; color: var(--primary);">Thông Tin Chuyên Khoa Bác Sĩ</h4>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="specialty">Chuyên Khoa</label>
+          <input type="text" id="specialty" name="specialty" class="form-control" value="{{ user.specialty or '' }}" placeholder="Ví dụ: Tim mạch, Răng Hàm Mặt...">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="room">Phòng Khám</label>
+          <input type="text" id="room" name="room" class="form-control" value="{{ user.room or '' }}" placeholder="Ví dụ: Phòng 301 (Tầng 3)">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="phone">SĐT Liên Hệ</label>
+          <input type="tel" id="phone" name="phone" class="form-control" value="{{ user.phone or '' }}" placeholder="09xxxxxxxx">
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+      <a href="{{ url_for('admin.list_users') }}" class="btn btn-secondary">Hủy bỏ</a>
+      <button type="submit" class="btn btn-primary">Tạo Tài Khoản</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function toggleDoctorFields(role) {
+  const box = document.getElementById('doctorFields');
+  if (role === 'doctor') {
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+</script>
+{% endblock %}
