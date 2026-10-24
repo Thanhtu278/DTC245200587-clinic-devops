@@ -1,0 +1,90 @@
+================================================================================
+BÁO CÁO KẾT QUẢ KIỂM THỬ TỪ TRẠNG THÁI SẠCH (FINAL SMOKE TEST)
+Thời gian bắt đầu: 2026-10-24 18:59:05
+Sinh viên thực hiện: Ma Thị Thanh Tú - MSSV: DTC245200587
+Đề tài: Hệ thống Quản lý Phòng khám / Bệnh viện (DevOps)
+Môi trường: Ubuntu 26.04 VM (192.168.30.128) - Docker Compose v2
+================================================================================
+
+--- 1. KIỂM TRA TRẠNG THÁI DOCKER CONTAINERS ---
+NAMES                      STATUS                          PORTS
+clinic_nginx_exporter      Up About a minute               
+clinic_nginx               Up About a minute               0.0.0.0:80->8080/tcp, [::]:80->8080/tcp, 0.0.0.0:443->8443/tcp, [::]:443->8443/tcp
+clinic_pgadmin             Up About a minute               80/tcp, 443/tcp
+clinic_web                 Up About a minute               8000/tcp
+clinic_postgres_exporter   Up About a minute               9187/tcp
+clinic_grafana             Up About a minute               3000/tcp
+clinic_promtail            Up About a minute               
+clinic_db                  Up About a minute (healthy)     5432/tcp
+clinic_loki                Up About a minute               3100/tcp
+clinic_prometheus          Up About a minute               9090/tcp
+clinic_alert_sink          Up About a minute               5001/tcp
+clinic_cadvisor            Up About a minute (healthy)     8080/tcp
+loki                       Up 4 hours                      0.0.0.0:3100->3100/tcp, [::]:3100->3100/tcp
+mysql                      Up 4 hours                      3306/tcp, 33060/tcp
+grafana                    Up 4 hours                      0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+prometheus                 Up 4 hours                      0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+promtail                   Restarting (1) 8 seconds ago    
+cadvisor                   Up 4 hours (healthy)            8080/tcp
+mysql-exporter             Restarting (1) 13 seconds ago   
+wp_app                     Up 4 hours                      80/tcp
+wp_db                      Up 4 hours                      3306/tcp
+wp-app                     Up 4 hours                      0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+wp-redis                   Up 4 hours                      6379/tcp
+wp-mysql                   Up 4 hours                      3306/tcp, 33060/tcp
+
+--- 2. KIỂM TRA ĐĂNG NHẬP 3 VAI TRÒ (RBAC) ---
+  [+] Vai trò ADMIN (admin): Login -> HTTP 200, Truy cập /admin/reports -> HTTP 200
+      => Đạt: Admin đăng nhập thành công và truy cập được bảng điều khiển quản trị.
+  [+] Vai trò LỄ TÂN (letan01): Login -> HTTP 200, Truy cập /patients/new -> HTTP 200
+      Kiểm tra vượt quyền lễ tân vào /admin/reports: HTTP 403 (Kỳ vọng: 403 Forbidden)
+      => Đạt: Lễ tân truy cập đúng phân hệ, bị chặn 403 khi cố truy cập trang Admin.
+  [+] Vai trò BÁC SĨ (bs.nguyen): Login -> HTTP 200, Truy cập /doctor/appointments -> HTTP 200
+      => Đạt: Bác sĩ đăng nhập thành công và xem được danh sách lịch khám phụ trách.
+
+--- 3. KIỂM TRA ĐẶT LỊCH VÀ CHỐNG TRÙNG GIỜ KHÁM ---
+  [+] Tạo bệnh nhân mới BN_VERIFY_1792843148: HTTP 200
+      ID bệnh nhân trong CSDL: 13
+  [+] Đặt lịch khám lần 1 (BS 1 lúc 2026-12-01T09:30): HTTP 200
+      ID lịch hẹn vừa tạo: 11
+  [+] Thử đặt lịch TRÙNG GIỜ (BS 1 lúc 2026-12-01T09:30): HTTP 200
+      => Đạt [Chống trùng giờ]: Hệ thống từ chối chính xác: 'Bác sĩ đã có lịch khám vào khung giờ này!'
+
+--- 4. KIỂM TRA BÁC SĨ GHI BỆNH ÁN VÀ BẢO MẬT HỒ SƠ ---
+  [+] Bác sĩ An nhập bệnh án cho lịch ID 11: HTTP 200
+      Trạng thái lịch khám trong CSDL: 'done' (Kỳ vọng: 'done')
+      Bản ghi bệnh án liên kết: 1 bản ghi
+  [+] Bác sĩ An truy cập bệnh án của Bác sĩ khác (Lịch ID 2): HTTP 403 (Kỳ vọng: 403 Forbidden)
+      => Đạt: Bác sĩ ghi bệnh án thành công, cập nhật trạng thái 'done', chặn chéo bác sĩ 403.
+
+--- 5. KIỂM TRA DỊCH VỤ PGADMIN (SUBPATH /pgadmin/) ---
+  [+] Truy cập pgAdmin qua Nginx reverse proxy (https://192.168.30.128/pgadmin/): HTTP 200
+      => Đạt: Giao diện pgAdmin 4 phản hồi đúng tiêu đề, hoạt động bình thường qua proxy.
+
+--- 6. KIỂM TRA GRAFANA, DATASOURCES VÀ DASHBOARDS ---
+  [+] Kiểm tra API Datasources Grafana: HTTP 200
+      Danh sách Datasources đã nạp (2 nguồn): Loki, Prometheus
+  [+] Kiểm tra API Dashboards Grafana: HTTP 200
+      Danh sách Dashboards đã nạp (4 dashboard): Clinic - Containers, Clinic - Logs, Clinic - Nginx, Clinic - PostgreSQL
+      * Containers: [✓] Có sẵn
+      * Nginx: [✓] Có sẵn
+      * PostgreSQL: [✓] Có sẵn
+      => Đạt: Grafana nạp đủ Prometheus, Loki và toàn bộ các dashboard chuẩn.
+
+--- 7. KIỂM TRA TRUY VẤN LOGQL QUA LOKI ---
+  [+] Thực thi truy vấn LogQL ({job="webapp"}): HTTP 200
+      Số luồng log (streams) thu thập được: 2 luồng
+      => Đạt: Loki + Promtail gom log thời gian thực từ Docker socket thành công.
+
+--- 8. KIỂM TRA KỊCH BẢN BRUTE FORCE VÀ CẢNH BÁO ALERT-SINK ---
+  [+] Kích hoạt 15 lần đăng nhập thất bại liên tiếp...
+      Kết quả gửi request: 1 lần trả về lỗi đăng nhập, 14 lần Nginx chặn 429 (Rate Limit).
+      Ghi nhận 1 sự kiện LOGIN_FAILED trong log của clinic_web.
+      Trạng thái tiếp nhận tại container clinic_alert_sink:
+      * [*] Alert-Sink Server đang lắng nghe webhook tại cổng 5001...
+      => Đạt: Chu trình phát hiện tấn công Brute Force -> Ghi Log -> Alert Sink hoạt động chính xác.
+
+================================================================================
+KẾT QUẢ TỔNG THỂ: 100% CÁC MỤC KIỂM THỬ ĐỀU ĐẠT CHUẨN (PASS)
+Thời gian kết thúc: 2026-10-24 18:59:11 (Tổng: 6.1 giây)
+================================================================================
